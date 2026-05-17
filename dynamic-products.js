@@ -297,6 +297,10 @@ function renderProductDetail(product) {
     inquiryButton.href = `index.html?product=${encodeURIComponent(product.name || "XiQi Product")}#contact`;
   }
 
+  if (typeof loadRelatedProducts === "function") {
+    loadRelatedProducts(product);
+  }
+
   document.title = ogTitle;
   updateMeta("name", "description", ogDescription);
   updateMeta("property", "og:title", ogTitle);

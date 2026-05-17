@@ -1856,10 +1856,21 @@ body:has(.detail-page){
   object-fit:cover;
 }
 
-.related-grid{
+.related-grid,
+.related-products-grid{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
   gap:22px;
+}
+
+.related-products-message{
+  grid-column:1 / -1;
+  padding:22px;
+  color:#64748b;
+  text-align:center;
+  background:#fff;
+  border:1px solid rgba(191,219,254,.74);
+  border-radius:18px;
 }
 
 .related-card{
@@ -1910,7 +1921,8 @@ body:has(.detail-page){
     padding-right:28px;
   }
 
-  .related-grid{
+  .related-grid,
+  .related-products-grid{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
@@ -1927,7 +1939,8 @@ body:has(.detail-page){
 
   .detail-features,
   .detail-info,
-  .related-grid{
+  .related-grid,
+  .related-products-grid{
     grid-template-columns:1fr;
   }
 

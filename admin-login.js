@@ -1,7 +1,7 @@
 const loginForm = document.getElementById("loginForm");
 const loginStatus = document.getElementById("loginStatus");
 const loginButton = loginForm.querySelector('button[type="submit"]');
-const config = window.XIQI_SUPABASE;
+const config = window.XIQI_CONFIG;
 const client = supabase.createClient(config.url, config.key, {
   auth: {
     persistSession: true,
@@ -35,6 +35,14 @@ loginForm.addEventListener("submit", async (event) => {
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token
     });
+
+    const {
+      data: { session }
+    } = await client.auth.getSession();
+
+    if (!session) {
+      throw new Error("Supabase session was not saved. Please try again.");
+    }
 
     window.location.href = "admin.html";
   } catch (error) {

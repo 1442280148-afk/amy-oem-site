@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    console.log("Inquiry submit event triggered.");
 
     if (button.disabled) return;
 
@@ -49,9 +50,11 @@ document.addEventListener("DOMContentLoaded", () => {
         "Inquiry submitted successfully. We will reply within 24 hours.",
         "success"
       );
+      console.log("Inquiry saved to Supabase.");
 
       try {
         await sendInquiryEmail(data);
+        console.log("Inquiry email API completed.");
       } catch (mailError) {
         console.warn("Email failed:", mailError);
       }
@@ -60,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       setStatus(
         status,
-        "Submission failed. Please try again or contact us on WhatsApp.",
+        `Submission failed: ${error.message || "Please try again or contact us on WhatsApp."}`,
         "error"
       );
     } finally {
@@ -85,22 +88,31 @@ function clean(value) {
 }
 
 async function sendInquiryEmail(data) {
-  try {
-    const response = await fetch("/api/send-inquiry-email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        ...data,
-        submitted_at: new Date().toLocaleString()
-      })
-    });
+  console.log("Sending inquiry email API request...");
 
-    if (!response.ok) {
-      console.warn("Inquiry email notification failed, but Supabase insert succeeded.");
-    }
-  } catch (error) {
-    console.warn("Inquiry email notification failed, but Supabase insert succeeded.", error);
+  const response = await fetch("/api/send-inquiry", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      ...data,
+      submitted_at: new Date().toLocaleString()
+    })
+  });
+
+  let result = {};
+
+  try {
+    result = await response.json();
+  } catch {
+    result = {};
   }
+
+  if (!response.ok) {
+    throw new Error(result.error || `Inquiry email API failed with status ${response.status}`);
+  }
+
+  console.log("Inquiry email API success:", result);
+  return result;
 }

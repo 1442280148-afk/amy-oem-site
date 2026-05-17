@@ -1,3 +1,16 @@
+const config = window.XIQI_CONFIG;
+const client = window.XIQI_ADMIN_CLIENT;
+
+if (!config) {
+  showBlockingAdminError("XIQI_CONFIG missing. Please check supabase-config.js loading order.");
+  throw new Error("XIQI_CONFIG missing. Please check supabase-config.js loading order.");
+}
+
+if (!client) {
+  showBlockingAdminError("Authenticated Supabase client missing. Please check admin-auth.js loading order.");
+  throw new Error("Authenticated Supabase client missing. Please check admin-auth.js loading order.");
+}
+
 const form = document.getElementById("productForm");
 const statusText = document.getElementById("formStatus");
 const productList = document.getElementById("productList");
@@ -21,36 +34,18 @@ const removeProductVideoButton = document.getElementById("removeProductVideo");
 const productVideoStatus = document.getElementById("productVideoStatus");
 const cancelEditButton = document.getElementById("cancelEdit");
 const submitButton = form.querySelector('button[type="submit"]');
-const config = window.XIQI_SUPABASE;
-let client = window.XIQI_ADMIN_CLIENT || createSupabaseAdminClient();
 let adminSession = null;
 
-function createSupabaseAdminClient(session) {
-  const options = {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    }
-  };
-
-  if (session?.access_token) {
-    options.global = {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`
-      }
-    };
+async function ensureAdminSession() {
+  if (!client) {
+    window.location.href = "admin-login.html";
+    throw new Error("Authenticated Supabase client is not available.");
   }
 
-  return supabase.createClient(config.url, config.key, options);
-}
-
-async function ensureAdminSession() {
-  const authClient = window.XIQI_ADMIN_CLIENT || client;
   const {
     data: { session },
     error
-  } = await authClient.auth.getSession();
+  } = await client.auth.getSession();
 
   if (error || !session) {
     window.location.href = "admin-login.html";
@@ -59,12 +54,13 @@ async function ensureAdminSession() {
 
   adminSession = session;
   window.XIQI_ADMIN_SESSION = session;
-  client = createSupabaseAdminClient(session);
 
   await client.auth.setSession({
     access_token: session.access_token,
     refresh_token: session.refresh_token
   });
+
+  console.log("Supabase admin role:", getJwtRole(session.access_token), session.user?.email || "unknown");
 
   return adminSession;
 }
@@ -186,6 +182,7 @@ async function resolveImageUrl(formData) {
 
 async function uploadImage(file) {
   await ensureAdminSession();
+  const config = getAdminConfig();
 
   const ext = file.name.match(/\.[a-z0-9]+$/i)?.[0] || "";
   const filename = `${Date.now()}-${crypto.randomUUID()}${ext}`;
@@ -225,6 +222,7 @@ async function uploadFile(file, bucket, folder) {
 }
 
 async function resolveProductVideoUrl(formData) {
+  const config = getAdminConfig();
   const file = document.getElementById("productVideoFile").files[0];
 
   if (formData.get("remove_product_video") === "1") {
@@ -240,6 +238,7 @@ async function resolveProductVideoUrl(formData) {
 
 async function saveProduct(formData, imageUrl, videoUrl, gallery) {
   await ensureAdminSession();
+  const config = getAdminConfig();
 
   const id = formData.get("id");
   const payload = {
@@ -287,6 +286,7 @@ async function saveProduct(formData, imageUrl, videoUrl, gallery) {
 }
 
 async function resolveGalleryUrls(formData) {
+  const config = getAdminConfig();
   const files = Array.from(document.getElementById("galleryFiles").files || []);
   const currentGallery = parseGallery(formData.get("current_gallery"));
 
@@ -302,6 +302,7 @@ async function resolveGalleryUrls(formData) {
 
 async function loadProducts() {
   await ensureAdminSession();
+  const config = getAdminConfig();
 
   productList.innerHTML = "<p>Loading products...</p>";
 
@@ -386,6 +387,7 @@ function editProduct(product) {
 
 async function deleteProduct(product) {
   await ensureAdminSession();
+  const config = getAdminConfig();
 
   if (!product) return;
 
@@ -410,6 +412,7 @@ async function deleteProduct(product) {
 }
 
 async function deleteProductStorageFiles(product) {
+  const config = getAdminConfig();
   const urls = [
     product.image_url,
     ...(normalizeGallery(product.gallery)),
@@ -428,6 +431,8 @@ async function deleteProductStorageFiles(product) {
 }
 
 function storagePathFromPublicUrl(url) {
+  const config = getAdminConfig();
+
   try {
     const parsed = new URL(url);
     const marker = `/storage/v1/object/public/${config.storageBucket}/`;
@@ -480,6 +485,7 @@ function updateGallerySort(index, sortOrder) {
 
 async function setMainProductImage(imageUrl) {
   await ensureAdminSession();
+  const config = getAdminConfig();
 
   const productId = form.id.value;
 
@@ -512,6 +518,7 @@ function deleteGalleryImage(index) {
 }
 
 async function resolveCategoryImageUrl(formData) {
+  const config = getAdminConfig();
   const file = document.getElementById("categoryImageFile").files[0];
   const currentImageUrl = formData.get("current_image_url");
 
@@ -829,17 +836,17 @@ function renderInquiries(inquiries) {
     </article>
   `).join("");
 
-  inquiryList.querySelectorAll("button").forEach((button) => {
+  inquiryList.querySelectorAll('button[data-action="view"]').forEach((button) => {
     button.addEventListener("click", () => {
-      const inquiry = inquiries.find((item) => item.id === button.dataset.id);
+      toggleInquiryDetail(button);
+    });
+  });
 
-      if (button.dataset.action === "view") {
-        toggleInquiryDetail(button);
-      }
-
-      if (button.dataset.action === "delete") {
-        deleteInquiry(inquiry);
-      }
+  inquiryList.querySelectorAll('button[data-action="delete"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      console.log("delete button clicked");
+      const inquiry = inquiries.find((item) => String(item.id) === String(button.dataset.id));
+      deleteInquiry(inquiry);
     });
   });
 
@@ -901,16 +908,21 @@ async function deleteInquiry(inquiry) {
 
   if (!confirmed) return;
 
-  const { error } = await client
+  console.log("deleting inquiry id", inquiry.id);
+
+  const { data, error } = await client
     .from("inquiries")
     .delete()
-    .eq("id", inquiry.id);
+    .eq("id", inquiry.id)
+    .select();
 
   if (error) {
+    console.log("delete error", error);
     window.alert(error.message || "Failed to delete inquiry.");
     return;
   }
 
+  console.log("delete success", data);
   await loadInquiries();
 }
 
@@ -978,6 +990,31 @@ function setStatus(message) {
   statusText.textContent = message;
 }
 
+function getAdminConfig() {
+  const config = window.XIQI_CONFIG;
+
+  if (!config) {
+    throw new Error("XIQI_CONFIG missing. Please check supabase-config.js loading order.");
+  }
+
+  return config;
+}
+
+function showBlockingAdminError(message) {
+  document.addEventListener("DOMContentLoaded", () => {
+    document.body.insertAdjacentHTML("afterbegin", `<div style="padding:16px;color:#b91c1c;background:#fee2e2;font-weight:700">${message}</div>`);
+  });
+}
+
+function getJwtRole(accessToken) {
+  try {
+    const payload = JSON.parse(atob(accessToken.split(".")[1]));
+    return payload.role || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -991,4 +1028,8 @@ function escapeAttribute(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
-initAdmin();
+window.XIQI_ADMIN_READY
+  .then(() => initAdmin())
+  .catch((error) => {
+    console.warn(error.message || "Admin authentication failed.");
+  });
