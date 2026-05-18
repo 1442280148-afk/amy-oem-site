@@ -1,258 +1,388 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XiQi Product Admin</title>
-  <meta name="description" content="XiQi product admin for managing Supabase product data and product images.">
-  <meta name="keywords" content="XiQi admin, product management, Supabase products">
-  <meta property="og:title" content="XiQi Product Admin">
-  <meta property="og:description" content="Manage XiQi product data and product images.">
+  <title>LinfTech Admin</title>
+  <meta name="description" content="LinfTech admin console for managing products, categories, videos and inquiries.">
+  <meta name="keywords" content="LinfTech admin, product management, Supabase products">
+  <meta property="og:title" content="LinfTech Admin">
+  <meta property="og:description" content="Manage LinfTech product data and inquiries.">
   <meta property="og:image" content="products-banner.jpg">
   <link rel="stylesheet" href="admin.css">
 </head>
 <body>
   <main class="admin-shell">
-    <section class="admin-header">
-      <div>
-        <p>XiQi Technology</p>
-        <h1>Product Admin</h1>
-      </div>
+    <header class="admin-topbar">
+      <a class="admin-brand" href="admin.html" aria-label="LinfTech Admin home">
+        <span class="brand-mark">LT</span>
+        <span>
+          <strong>LinfTech Admin</strong>
+          <small>Manage Products & Orders</small>
+        </span>
+      </a>
+
+      <nav class="admin-tabs" aria-label="Admin sections">
+        <button class="admin-tab is-active" type="button" data-admin-tab="dashboardTab">Dashboard</button>
+        <button class="admin-tab" type="button" data-admin-tab="productsTab">Products</button>
+        <button class="admin-tab" type="button" data-admin-tab="categoriesTab">Categories</button>
+        <button class="admin-tab" type="button" data-admin-tab="factoryTab">Factory Videos</button>
+        <button class="admin-tab" type="button" data-admin-tab="inquiriesTab">Inquiries</button>
+      </nav>
+
       <div class="admin-header-actions">
-        <a href="product.html">View Products</a>
-        <button id="logoutButton" type="button">Logout</button>
+        <a class="admin-ghost-link" href="product.html">View Products</a>
+        <button id="logoutButton" class="admin-ghost-button" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="admin-hero">
+      <div>
+        <p class="eyebrow">Professional B2B operations</p>
+        <h1>Admin workspace for products, media and global buyer leads.</h1>
+      </div>
+      <div class="hero-status-card">
+        <span class="live-dot"></span>
+        <span>Supabase connected workspace</span>
       </div>
     </section>
 
-    <section class="admin-panel">
+    <section id="dashboardTab" class="admin-tab-panel">
+      <div class="section-title">
+        <div>
+          <p>Dashboard</p>
+          <h2>Store overview</h2>
+        </div>
+        <button class="soft-button" id="refreshDashboard" type="button">Refresh All</button>
+      </div>
+
+      <div id="dashboardStats" class="dashboard-grid"></div>
+
+      <div class="dashboard-columns">
+        <section class="admin-panel dashboard-panel">
+          <div class="section-title compact-title">
+            <div>
+              <p>Recent Products</p>
+              <h2>Latest product records</h2>
+            </div>
+          </div>
+          <div id="recentProducts" class="compact-list"></div>
+        </section>
+
+        <section class="admin-panel dashboard-panel">
+          <div class="section-title compact-title">
+            <div>
+              <p>Recent Inquiries</p>
+              <h2>Newest buyer leads</h2>
+            </div>
+          </div>
+          <div id="recentInquiries" class="compact-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="productsTab" class="admin-tab-panel" hidden>
+      <div class="section-title">
+        <div>
+          <p>Products</p>
+          <h2>Product management</h2>
+        </div>
+        <button id="refreshProducts" class="soft-button" type="button">Refresh</button>
+      </div>
+
+      <section class="admin-panel editor-panel">
         <form id="productForm" class="product-form">
-        <input type="hidden" name="id">
-        <input type="hidden" name="current_image_url">
-        <input type="hidden" name="current_video_url">
-        <input type="hidden" name="current_gallery">
-        <input type="hidden" name="remove_product_video" value="">
+          <input type="hidden" name="id">
+          <input type="hidden" name="current_image_url">
+          <input type="hidden" name="current_video_url">
+          <input type="hidden" name="current_gallery">
+          <input type="hidden" name="remove_product_video" value="">
 
-        <div class="form-grid">
-          <label>
-            Product Name
-            <input type="text" name="name" required>
-          </label>
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Basic Info</p>
+              <span>Core catalog data shown on the storefront.</span>
+            </div>
+            <div class="form-grid">
+              <label>
+                Product Name
+                <input type="text" name="name" required placeholder="MagSafe Clear Phone Case">
+              </label>
+              <label>
+                Category
+                <input type="text" name="category" placeholder="Phone Cases">
+              </label>
+              <label>
+                Sort Order
+                <input type="number" name="sort_order" value="0">
+              </label>
+              <label>
+                Status
+                <select name="status">
+                  <option value="published">Published</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              Short Description
+              <input type="text" name="short_desc" placeholder="Modern mobile accessory for global retail buyers">
+            </label>
+          </div>
 
-          <label>
-            Category
-            <input type="text" name="category" placeholder="Phone Case">
-          </label>
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Pricing & Supply</p>
+              <span>Visible buying details for wholesale inquiries.</span>
+            </div>
+            <div class="form-grid">
+              <label>
+                Price
+                <input type="text" name="price" placeholder="Contact for price">
+              </label>
+              <label>
+                MOQ
+                <input type="text" name="moq" placeholder="100 PCS">
+              </label>
+              <label>
+                Material
+                <input type="text" name="material" placeholder="TPU / PC / Tempered Glass">
+              </label>
+              <label>
+                Packaging
+                <input type="text" name="packaging" placeholder="Custom retail packaging">
+              </label>
+              <label>
+                Lead Time
+                <input type="text" name="lead_time" placeholder="5-7 Days">
+              </label>
+              <label class="switch-field">
+                <span>
+                  Featured Product
+                  <small>Optional if your Supabase table supports it.</small>
+                </span>
+                <input type="checkbox" name="is_featured">
+              </label>
+            </div>
+          </div>
 
-          <label>
-            Sort Order
-            <input type="number" name="sort_order" value="0">
-          </label>
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Media</p>
+              <span>Use clean product photography for best storefront results.</span>
+            </div>
+            <div class="form-grid media-grid">
+              <label>
+                Product Image
+                <input type="file" id="imageFile" accept="image/*">
+              </label>
+              <label>
+                Product Gallery Upload
+                <input type="file" id="galleryFiles" accept="image/*" multiple>
+              </label>
+              <label>
+                Product Video Upload
+                <input type="file" id="productVideoFile" accept="video/mp4,video/*">
+              </label>
+            </div>
+            <div id="productGalleryList" class="gallery-manage-list"></div>
+            <div class="form-actions compact-actions">
+              <button id="removeProductVideo" class="danger-soft" type="button" hidden>Delete Product Video</button>
+              <span id="productVideoStatus" class="status-text"></span>
+            </div>
+          </div>
 
-          <label>
-            Status
-            <select name="status">
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
-            </select>
-          </label>
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Details</p>
+              <span>Keep the copy practical and buyer-focused.</span>
+            </div>
+            <label>
+              Description
+              <textarea name="description" rows="4" placeholder="Describe product positioning, materials, packaging, or buyer use cases."></textarea>
+            </label>
+            <label>
+              Features
+              <textarea name="features" rows="5" placeholder="One feature per line&#10;Slim protective design&#10;OEM logo support&#10;Retail packaging available"></textarea>
+              <small class="field-hint">Enter one feature per line for cleaner product detail pages.</small>
+            </label>
+          </div>
 
-          <label>
-            Price
-            <input type="text" name="price" placeholder="Contact for price">
-          </label>
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>SEO</p>
+              <span>UI-ready optional fields. They save only when matching columns exist.</span>
+            </div>
+            <div class="form-grid seo-grid">
+              <label>
+                Meta Title
+                <input type="text" name="meta_title" placeholder="Premium Phone Cases Wholesale Supplier">
+              </label>
+              <label>
+                Keywords
+                <input type="text" name="keywords" placeholder="phone cases, OEM mobile accessories, wholesale">
+              </label>
+            </div>
+            <label>
+              Meta Description
+              <textarea name="meta_description" rows="3" placeholder="Short SEO description for search results."></textarea>
+            </label>
+          </div>
 
-          <label>
-            MOQ
-            <input type="text" name="moq" placeholder="100 PCS">
-          </label>
+          <div class="form-actions sticky-actions">
+            <button class="primary-button" type="submit">Add Product</button>
+            <button id="cancelEdit" class="soft-button" type="button" hidden>Cancel Edit</button>
+            <span id="formStatus" class="status-text"></span>
+          </div>
+        </form>
+      </section>
 
-          <label>
-            Material
-            <input type="text" name="material" placeholder="Tempered Glass">
-          </label>
-
-          <label>
-            Packaging
-            <input type="text" name="packaging" placeholder="Customized">
-          </label>
-
-          <label>
-            Lead Time
-            <input type="text" name="lead_time" placeholder="5-7 Days">
-          </label>
-        </div>
-
-        <label>
-          Short Description
-          <input type="text" name="short_desc" placeholder="OEM mobile accessory product">
-        </label>
-
-        <label>
-          Description
-          <textarea name="description" rows="4"></textarea>
-        </label>
-
-        <label>
-          Features
-          <textarea name="features" rows="4" placeholder="One feature per line"></textarea>
-        </label>
-
-        <label>
-          Product Image
-          <input type="file" id="imageFile" accept="image/*">
-        </label>
-
-        <label>
-          Product Gallery Upload
-          <input type="file" id="galleryFiles" accept="image/*" multiple>
-        </label>
-
-        <div id="productGalleryList" class="gallery-manage-list"></div>
-
-        <label>
-          Product Video Upload
-          <input type="file" id="productVideoFile" accept="video/mp4,video/*">
-        </label>
-
-        <div class="form-actions compact-actions">
-          <button id="removeProductVideo" type="button" hidden>Delete Product Video</button>
-          <span id="productVideoStatus"></span>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit">Add Product</button>
-          <button id="cancelEdit" type="button" hidden>Cancel Edit</button>
-          <span id="formStatus"></span>
-        </div>
-      </form>
+      <section class="admin-panel list-panel">
+        <div id="productList" class="product-list"></div>
+      </section>
     </section>
 
-    <section class="admin-panel">
+    <section id="categoriesTab" class="admin-tab-panel" hidden>
       <div class="section-title">
-        <p>Products</p>
-        <button id="refreshProducts" type="button">Refresh</button>
+        <div>
+          <p>Categories</p>
+          <h2>Collection structure</h2>
+        </div>
+        <button id="refreshCategories" class="soft-button" type="button">Refresh</button>
       </div>
-      <div id="productList" class="product-list"></div>
+
+      <section class="admin-panel editor-panel">
+        <form id="categoryForm" class="product-form admin-subform">
+          <input type="hidden" name="id">
+          <input type="hidden" name="current_image_url">
+
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Category Info</p>
+              <span>Build clean storefront navigation and product filters.</span>
+            </div>
+            <div class="form-grid">
+              <label>
+                Category Name
+                <input type="text" name="name" required placeholder="Phone Cases">
+              </label>
+              <label>
+                Slug
+                <input type="text" name="slug" placeholder="phone-cases">
+              </label>
+              <label>
+                Sort Order
+                <input type="number" name="sort_order" value="0">
+              </label>
+              <label>
+                Status
+                <select name="status">
+                  <option value="published">Published</option>
+                  <option value="hidden">Hidden</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              Description
+              <input type="text" name="description" placeholder="Optional category description">
+            </label>
+            <label>
+              Link
+              <input type="text" name="link" placeholder="product.html?category=phone-cases">
+            </label>
+            <label>
+              Category Image
+              <input type="file" id="categoryImageFile" accept="image/*">
+            </label>
+          </div>
+
+          <div class="form-actions sticky-actions">
+            <button class="primary-button" type="submit">Add Category</button>
+            <button id="cancelCategoryEdit" class="soft-button" type="button" hidden>Cancel Edit</button>
+            <span id="categoryStatus" class="status-text"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-panel list-panel">
+        <div id="categoryList" class="product-list"></div>
+      </section>
     </section>
 
-    <section class="admin-panel">
+    <section id="factoryTab" class="admin-tab-panel" hidden>
       <div class="section-title">
-        <p>Category Management</p>
-        <button id="refreshCategories" type="button">Refresh</button>
+        <div>
+          <p>Factory Videos</p>
+          <h2>Homepage media library</h2>
+        </div>
+        <button id="refreshFactoryVideos" class="soft-button" type="button">Refresh</button>
       </div>
 
-      <form id="categoryForm" class="product-form admin-subform">
-        <input type="hidden" name="id">
-        <input type="hidden" name="current_image_url">
+      <section class="admin-panel editor-panel">
+        <form id="factoryForm" class="product-form admin-subform">
+          <input type="hidden" name="id">
+          <input type="hidden" name="current_video_url">
 
-        <div class="form-grid">
-          <label>
-            Category Name
-            <input type="text" name="name" required placeholder="Phone Cases">
-          </label>
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Video Details</p>
+              <span>Manage MP4 media used by the storefront.</span>
+            </div>
+            <div class="form-grid">
+              <label>
+                Video Title
+                <input type="text" name="title" required placeholder="Factory capability highlight">
+              </label>
+              <label>
+                Sort Order
+                <input type="number" name="sort_order" value="0">
+              </label>
+              <label>
+                Status
+                <select name="status">
+                  <option value="published">Published</option>
+                  <option value="draft">Hidden</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              Description
+              <input type="text" name="description" placeholder="Optional video description">
+            </label>
+            <label>
+              MP4 Upload
+              <input type="file" id="factoryVideoFile" accept="video/mp4,video/*">
+            </label>
+          </div>
 
-          <label>
-            Slug
-            <input type="text" name="slug" placeholder="phone-cases">
-          </label>
+          <div class="form-actions sticky-actions">
+            <button class="primary-button" type="submit">Add Video</button>
+            <button id="cancelFactoryEdit" class="soft-button" type="button" hidden>Cancel Edit</button>
+            <span id="factoryStatus" class="status-text"></span>
+          </div>
+        </form>
+      </section>
 
-          <label>
-            Sort Order
-            <input type="number" name="sort_order" value="0">
-          </label>
-
-          <label>
-            Status
-            <select name="status">
-              <option value="published">Published</option>
-              <option value="hidden">Hidden</option>
-            </select>
-          </label>
-        </div>
-
-        <label>
-          Description
-          <input type="text" name="description" placeholder="Optional category description">
-        </label>
-
-        <label>
-          Link
-          <input type="text" name="link" placeholder="product.html?category=phone-cases">
-        </label>
-
-        <label>
-          Category Image Optional
-          <input type="file" id="categoryImageFile" accept="image/*">
-        </label>
-
-        <div class="form-actions">
-          <button type="submit">Add Category</button>
-          <button id="cancelCategoryEdit" type="button" hidden>Cancel Edit</button>
-          <span id="categoryStatus"></span>
-        </div>
-      </form>
-
-      <div id="categoryList" class="product-list"></div>
+      <section class="admin-panel list-panel">
+        <div id="factoryVideoList" class="product-list"></div>
+      </section>
     </section>
 
-    <section class="admin-panel">
+    <section id="inquiriesTab" class="admin-tab-panel" hidden>
       <div class="section-title">
-        <p>Factory Video Management</p>
-        <button id="refreshFactoryVideos" type="button">Refresh</button>
-      </div>
-
-      <form id="factoryForm" class="product-form admin-subform">
-        <input type="hidden" name="id">
-        <input type="hidden" name="current_video_url">
-
-        <div class="form-grid">
-          <label>
-            Video Title
-            <input type="text" name="title" required>
-          </label>
-
-          <label>
-            Sort Order
-            <input type="number" name="sort_order" value="0">
-          </label>
-
-          <label>
-            Status
-            <select name="status">
-              <option value="published">Published</option>
-              <option value="draft">Hidden</option>
-            </select>
-          </label>
+        <div>
+          <p>Inquiries</p>
+          <h2>Lead management</h2>
         </div>
-
-        <label>
-          Description
-          <input type="text" name="description" placeholder="Optional video description">
-        </label>
-
-        <label>
-          MP4 Video
-          <input type="file" id="factoryVideoFile" accept="video/mp4,video/*">
-        </label>
-
-        <div class="form-actions">
-          <button type="submit">Add Video</button>
-          <button id="cancelFactoryEdit" type="button" hidden>Cancel Edit</button>
-          <span id="factoryStatus"></span>
-        </div>
-      </form>
-
-      <div id="factoryVideoList" class="product-list"></div>
-    </section>
-
-    <section class="admin-panel">
-      <div class="section-title">
-        <p>Inquiry Management</p>
-        <button id="refreshInquiries" type="button">Refresh</button>
+        <button id="refreshInquiries" class="soft-button" type="button">Refresh</button>
       </div>
-      <div id="inquiryList" class="inquiry-list"></div>
+      <section class="admin-panel list-panel">
+        <div id="inquiryList" class="inquiry-list"></div>
+      </section>
     </section>
   </main>
+
+  <div id="adminToast" class="admin-toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script src="supabase-config.js"></script>
@@ -260,3 +390,5 @@
   <script src="admin.js"></script>
 </body>
 </html>
+
+

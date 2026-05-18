@@ -1,4 +1,5 @@
-User-agent: *
+﻿User-agent: *
 Allow: /
 
-Sitemap: https://www.xiqitrade.cn/sitemap.xml
+Sitemap: https://www.linftech.com/sitemap.xml
+

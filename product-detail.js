@@ -1,4 +1,4 @@
-async function loadRelatedProducts(currentProduct) {
+﻿async function loadRelatedProducts(currentProduct) {
   const container = document.getElementById("relatedProducts");
 
   if (!container || !currentProduct) return;
@@ -38,8 +38,8 @@ function renderRelatedProducts(container, products) {
 
   container.innerHTML = products.map((product) => `
     <a href="product-detail.html?id=${encodeURIComponent(product.id)}" class="related-card">
-      <img src="${escapeRelatedAttribute(product.image_url || "logo.png")}" alt="${escapeRelatedAttribute(product.name || "XiQi Product")}" loading="lazy">
-      <h3>${escapeRelatedHtml(product.name || "XiQi Product")}</h3>
+      <img src="${escapeRelatedAttribute(product.image_url || "logo.png")}" alt="${escapeRelatedAttribute(product.name || "LinfTech Product")}" loading="lazy">
+      <h3>${escapeRelatedHtml(product.name || "LinfTech Product")}</h3>
       <p>${escapeRelatedHtml(product.short_desc || product.description || product.category || "")}</p>
     </a>
   `).join("");
@@ -57,3 +57,4 @@ function escapeRelatedHtml(value) {
 function escapeRelatedAttribute(value) {
   return escapeRelatedHtml(value).replaceAll("`", "&#096;");
 }
+

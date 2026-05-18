@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+﻿document.addEventListener("DOMContentLoaded", () => {
   loadProductGrid();
   loadProductDetail();
 });
@@ -151,9 +151,9 @@ function renderFilteredProducts() {
 
   grid.innerHTML = filteredProducts.map((product) => `
     <div class="product-card">
-      <img src="${escapeAttribute(product.image_url || "")}" alt="${escapeAttribute(product.name || "XiQi Product")}" loading="lazy">
+      <img src="${escapeAttribute(product.image_url || "")}" alt="${escapeAttribute(product.name || "LinfTech Product")}" loading="lazy">
       <div class="product-info">
-        <h3>${escapeHtml(product.name || "XiQi Product")}</h3>
+        <h3>${escapeHtml(product.name || "LinfTech Product")}</h3>
         <a href="product-detail.html?id=${encodeURIComponent(product.id)}">View Details</a>
       </div>
     </div>
@@ -226,8 +226,8 @@ function renderProductDetail(product) {
   const videoSection = document.querySelector(".product-video-section");
   const productVideo = document.getElementById("productVideo");
   const inquiryButton = document.querySelector(".detail-buttons .btn.primary");
-  const ogTitle = `${product.name || "Product Details"} | Guangzhou XiQi Technology`;
-  const ogDescription = product.short_desc || product.description || "XiQi OEM and wholesale mobile accessories product details.";
+  const ogTitle = `${product.name || "Product Details"} | LinfTech`;
+  const ogDescription = product.short_desc || product.description || "LinfTech OEM and wholesale mobile accessories product details.";
   const images = buildGalleryImages(product);
 
   if (mainImage && images.length) {
@@ -247,11 +247,11 @@ function renderProductDetail(product) {
   }
 
   if (title) {
-    title.textContent = product.name || "XiQi Product";
+    title.textContent = product.name || "LinfTech Product";
   }
 
   if (desc) {
-    desc.textContent = product.description || product.short_desc || "OEM / ODM mobile accessories product from Guangzhou XiQi Technology.";
+    desc.textContent = product.description || product.short_desc || "OEM / wholesale mobile accessories product from LinfTech.";
   }
 
   if (features) {
@@ -294,7 +294,7 @@ function renderProductDetail(product) {
   }
 
   if (inquiryButton) {
-    inquiryButton.href = `index.html?product=${encodeURIComponent(product.name || "XiQi Product")}#contact`;
+    inquiryButton.href = `index.html?product=${encodeURIComponent(product.name || "LinfTech Product")}#contact`;
   }
 
   if (typeof loadRelatedProducts === "function") {
@@ -407,3 +407,4 @@ function escapeHtml(value) {
 function escapeAttribute(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
+

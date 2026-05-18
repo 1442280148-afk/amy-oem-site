@@ -1,10 +1,10 @@
-document.addEventListener("DOMContentLoaded", () => {
+﻿document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("inquiryForm");
 
   if (!form) return;
 
   const config = window.XIQI_SUPABASE;
-  const client = supabase.createClient(config.url, config.key);
+  const client = getXiqiSupabaseClient(config);
   const button = form.querySelector('button[type="submit"]');
   const status = document.createElement("div");
   const productInput = form.querySelector('[name="product"]');
@@ -115,4 +115,12 @@ async function sendInquiryEmail(data) {
 
   console.log("Inquiry email API success:", result);
   return result;
+}
+
+function getXiqiSupabaseClient(config) {
+  if (!window.__XIQI_SUPABASE_CLIENT__) {
+    window.__XIQI_SUPABASE_CLIENT__ = supabase.createClient(config.url, config.key);
+  }
+
+  return window.__XIQI_SUPABASE_CLIENT__;
 }

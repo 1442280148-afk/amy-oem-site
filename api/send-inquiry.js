@@ -1,4 +1,4 @@
-const nodemailer = require("nodemailer");
+﻿const nodemailer = require("nodemailer");
 
 module.exports = async function handler(req, res) {
   console.log("POST /api/send-inquiry received");
@@ -36,9 +36,9 @@ module.exports = async function handler(req, res) {
     });
 
     await transporter.sendMail({
-      from: `"XiQi Website" <${smtpUser}>`,
+      from: `"LinfTech Website" <${smtpUser}>`,
       to: notifyTo,
-      subject: `New Inquiry - ${safeText(inquiry.product) || "XiQi Website"}`,
+      subject: `New Inquiry - ${safeText(inquiry.product) || "LinfTech Website"}`,
       text: buildTextEmail(inquiry, submittedAt),
       html: buildHtmlEmail(inquiry, submittedAt)
     });
@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
 
 function buildTextEmail(inquiry, submittedAt) {
   return [
-    "New inquiry from XiQi website",
+    "New inquiry from LinfTech website",
     "",
     `Name: ${safeText(inquiry.name)}`,
     `Email: ${safeText(inquiry.email)}`,
@@ -69,7 +69,7 @@ function buildTextEmail(inquiry, submittedAt) {
 function buildHtmlEmail(inquiry, submittedAt) {
   return `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
-      <h2>New inquiry from XiQi website</h2>
+      <h2>New inquiry from LinfTech website</h2>
       <p><strong>Name:</strong> ${escapeHtml(inquiry.name)}</p>
       <p><strong>Email:</strong> ${escapeHtml(inquiry.email)}</p>
       <p><strong>WhatsApp:</strong> ${escapeHtml(inquiry.whatsapp)}</p>
@@ -95,3 +95,4 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+

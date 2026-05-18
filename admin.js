@@ -1,4 +1,4 @@
-const config = window.XIQI_CONFIG;
+﻿const config = window.XIQI_CONFIG;
 const client = window.XIQI_ADMIN_CLIENT;
 
 if (!config) {
@@ -34,7 +34,23 @@ const removeProductVideoButton = document.getElementById("removeProductVideo");
 const productVideoStatus = document.getElementById("productVideoStatus");
 const cancelEditButton = document.getElementById("cancelEdit");
 const submitButton = form.querySelector('button[type="submit"]');
+const dashboardStats = document.getElementById("dashboardStats");
+const recentProducts = document.getElementById("recentProducts");
+const recentInquiries = document.getElementById("recentInquiries");
+const refreshDashboardButton = document.getElementById("refreshDashboard");
+const toast = document.getElementById("adminToast");
+
 let adminSession = null;
+let productsCache = [];
+let categoriesCache = [];
+let factoryVideosCache = [];
+let inquiriesCache = [];
+let categorySlugTouched = false;
+let toastTimer = null;
+
+setupTabs();
+setupCategorySlugSuggestion();
+setupRefreshDashboard();
 
 async function ensureAdminSession() {
   if (!client) {
@@ -68,22 +84,77 @@ async function ensureAdminSession() {
 async function initAdmin() {
   try {
     await ensureAdminSession();
-    await Promise.all([
-      loadProducts(),
-      loadCategories(),
-      loadFactoryVideos(),
-      loadInquiries()
-    ]);
+    await loadAllAdminData();
   } catch (error) {
     console.warn(error.message || "Admin session unavailable.");
   }
 }
 
+async function loadAllAdminData() {
+  await Promise.all([
+    loadProducts(),
+    loadCategories(),
+    loadFactoryVideos(),
+    loadInquiries()
+  ]);
+  renderDashboard();
+}
+
+function setupTabs() {
+  const tabs = Array.from(document.querySelectorAll("[data-admin-tab]"));
+  const panels = Array.from(document.querySelectorAll(".admin-tab-panel"));
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => activateTab(tab.dataset.adminTab));
+  });
+
+  if (tabs.length && panels.length) activateTab("dashboardTab");
+}
+
+function activateTab(targetId) {
+  document.querySelectorAll("[data-admin-tab]").forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.adminTab === targetId);
+  });
+  document.querySelectorAll(".admin-tab-panel").forEach((panel) => {
+    panel.hidden = panel.id !== targetId;
+  });
+}
+
+function setupRefreshDashboard() {
+  if (!refreshDashboardButton) return;
+
+  refreshDashboardButton.addEventListener("click", async () => {
+    setButtonBusy(refreshDashboardButton, true);
+    try {
+      await loadAllAdminData();
+      showToast("Dashboard refreshed.");
+    } catch (error) {
+      showToast(error.message || "Failed to refresh dashboard.", "error");
+    } finally {
+      setButtonBusy(refreshDashboardButton, false);
+    }
+  });
+}
+
+function setupCategorySlugSuggestion() {
+  const nameInput = categoryForm?.elements?.name;
+  const slugInput = categoryForm?.elements?.slug;
+
+  if (!nameInput || !slugInput) return;
+
+  slugInput.addEventListener("input", () => {
+    categorySlugTouched = true;
+  });
+
+  nameInput.addEventListener("input", () => {
+    if (categorySlugTouched && slugInput.value.trim()) return;
+    slugInput.value = slugify(nameInput.value);
+  });
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-
   if (submitButton.disabled) return;
-
   setBusy(true);
   setStatus("Saving product...");
 
@@ -95,23 +166,75 @@ form.addEventListener("submit", async (event) => {
     const videoUrl = await resolveProductVideoUrl(formData);
     const gallery = await resolveGalleryUrls(formData);
     const savedProduct = await saveProduct(formData, imageUrl, videoUrl, gallery);
+    await saveOptionalProductFields(savedProduct, formData);
     resetForm();
-    setStatus(id ? "Product updated." : "Product added.");
+    const message = id ? "Product updated successfully." : "Product saved successfully.";
+    setStatus(message);
+    showToast(message);
     await loadProducts();
   } catch (error) {
-    setStatus(error.message || "Failed to save product.");
+    const message = error.message || "Failed to save product.";
+    setStatus(message);
+    showToast(message, "error");
   } finally {
     setBusy(false);
   }
 });
 
-refreshButton.addEventListener("click", loadProducts);
-refreshInquiriesButton.addEventListener("click", loadInquiries);
+refreshButton.addEventListener("click", async () => {
+  setButtonBusy(refreshButton, true);
+  try {
+    await loadProducts();
+    showToast("Products refreshed.");
+  } catch (error) {
+    showToast(error.message || "Failed to refresh products.", "error");
+  } finally {
+    setButtonBusy(refreshButton, false);
+  }
+});
+
+refreshInquiriesButton.addEventListener("click", async () => {
+  setButtonBusy(refreshInquiriesButton, true);
+  try {
+    await loadInquiries();
+    showToast("Inquiries refreshed.");
+  } catch (error) {
+    showToast(error.message || "Failed to refresh inquiries.", "error");
+  } finally {
+    setButtonBusy(refreshInquiriesButton, false);
+  }
+});
+
 cancelEditButton.addEventListener("click", resetForm);
-refreshCategoriesButton.addEventListener("click", loadCategories);
+
+refreshCategoriesButton.addEventListener("click", async () => {
+  setButtonBusy(refreshCategoriesButton, true);
+  try {
+    await loadCategories();
+    showToast("Categories refreshed.");
+  } catch (error) {
+    showToast(error.message || "Failed to refresh categories.", "error");
+  } finally {
+    setButtonBusy(refreshCategoriesButton, false);
+  }
+});
+
 cancelCategoryEditButton.addEventListener("click", resetCategoryForm);
-refreshFactoryVideosButton.addEventListener("click", loadFactoryVideos);
+
+refreshFactoryVideosButton.addEventListener("click", async () => {
+  setButtonBusy(refreshFactoryVideosButton, true);
+  try {
+    await loadFactoryVideos();
+    showToast("Factory videos refreshed.");
+  } catch (error) {
+    showToast(error.message || "Failed to refresh videos.", "error");
+  } finally {
+    setButtonBusy(refreshFactoryVideosButton, false);
+  }
+});
+
 cancelFactoryEditButton.addEventListener("click", resetFactoryForm);
+
 removeProductVideoButton.addEventListener("click", () => {
   form.current_video_url.value = "";
   form.remove_product_video.value = "1";
@@ -121,9 +244,7 @@ removeProductVideoButton.addEventListener("click", () => {
 
 categoryForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-
   if (categorySubmitButton.disabled) return;
-
   setButtonBusy(categorySubmitButton, true);
   categoryStatus.textContent = "Saving category...";
 
@@ -134,10 +255,14 @@ categoryForm.addEventListener("submit", async (event) => {
     const imageUrl = await resolveCategoryImageUrl(formData);
     await saveCategory(formData, imageUrl);
     resetCategoryForm();
-    categoryStatus.textContent = id ? "Category updated." : "Category added.";
+    const message = id ? "Category updated." : "Category saved successfully.";
+    categoryStatus.textContent = message;
+    showToast(message);
     await loadCategories();
   } catch (error) {
-    categoryStatus.textContent = error.message || "Failed to save category.";
+    const message = error.message || "Failed to save category.";
+    categoryStatus.textContent = message;
+    showToast(message, "error");
   } finally {
     setButtonBusy(categorySubmitButton, false);
   }
@@ -145,9 +270,7 @@ categoryForm.addEventListener("submit", async (event) => {
 
 factoryForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-
   if (factorySubmitButton.disabled) return;
-
   setButtonBusy(factorySubmitButton, true);
   factoryStatus.textContent = "Saving video...";
 
@@ -158,15 +281,18 @@ factoryForm.addEventListener("submit", async (event) => {
     const videoUrl = await resolveFactoryVideoUrl(formData);
     await saveFactoryVideo(formData, videoUrl);
     resetFactoryForm();
-    factoryStatus.textContent = id ? "Video updated." : "Video added.";
+    const message = id ? "Video updated." : "Video saved successfully.";
+    factoryStatus.textContent = message;
+    showToast(message);
     await loadFactoryVideos();
   } catch (error) {
-    factoryStatus.textContent = error.message || "Failed to save video.";
+    const message = error.message || "Failed to save video.";
+    factoryStatus.textContent = message;
+    showToast(message, "error");
   } finally {
     setButtonBusy(factorySubmitButton, false);
   }
 });
-
 async function resolveImageUrl(formData) {
   const fileInput = document.getElementById("imageFile");
   const file = fileInput.files[0];
@@ -183,40 +309,28 @@ async function resolveImageUrl(formData) {
 async function uploadImage(file) {
   await ensureAdminSession();
   const config = getAdminConfig();
-
   const ext = file.name.match(/\.[a-z0-9]+$/i)?.[0] || "";
   const filename = `${Date.now()}-${crypto.randomUUID()}${ext}`;
-  const { error } = await client.storage
-    .from(config.storageBucket)
-    .upload(filename, file, {
-      contentType: file.type,
-      upsert: false
-    });
+  const { error } = await client.storage.from(config.storageBucket).upload(filename, file, {
+    contentType: file.type,
+    upsert: false
+  });
 
-  if (error) {
-    throw new Error(error.message || "Image upload failed.");
-  }
-
+  if (error) throw new Error(error.message || "Image upload failed.");
   const { data } = client.storage.from(config.storageBucket).getPublicUrl(filename);
   return data.publicUrl;
 }
 
 async function uploadFile(file, bucket, folder) {
   await ensureAdminSession();
-
   const ext = file.name.match(/\.[a-z0-9]+$/i)?.[0] || "";
   const filename = `${folder}/${Date.now()}-${crypto.randomUUID()}${ext}`;
-  const { error } = await client.storage
-    .from(bucket)
-    .upload(filename, file, {
-      contentType: file.type,
-      upsert: false
-    });
+  const { error } = await client.storage.from(bucket).upload(filename, file, {
+    contentType: file.type,
+    upsert: false
+  });
 
-  if (error) {
-    throw new Error(error.message || "File upload failed.");
-  }
-
+  if (error) throw new Error(error.message || "File upload failed.");
   const { data } = client.storage.from(bucket).getPublicUrl(filename);
   return data.publicUrl;
 }
@@ -225,21 +339,14 @@ async function resolveProductVideoUrl(formData) {
   const config = getAdminConfig();
   const file = document.getElementById("productVideoFile").files[0];
 
-  if (formData.get("remove_product_video") === "1") {
-    return "";
-  }
-
-  if (!file) {
-    return formData.get("current_video_url") || "";
-  }
-
+  if (formData.get("remove_product_video") === "1") return "";
+  if (!file) return formData.get("current_video_url") || "";
   return uploadFile(file, config.storageBucket, "product-videos");
 }
 
 async function saveProduct(formData, imageUrl, videoUrl, gallery) {
   await ensureAdminSession();
   const config = getAdminConfig();
-
   const id = formData.get("id");
   const payload = {
     name: clean(formData.get("name")),
@@ -259,37 +366,51 @@ async function saveProduct(formData, imageUrl, videoUrl, gallery) {
     sort_order: Number(formData.get("sort_order") || 0)
   };
 
-  if (!payload.name) {
-    throw new Error("Product name is required.");
-  }
+  if (!payload.name) throw new Error("Product name is required.");
 
   if (id) {
-    const { data, error } = await client
-      .from(config.productsTable)
-      .update(payload)
-      .eq("id", id)
-      .select()
-      .single();
-
+    const { data, error } = await client.from(config.productsTable).update(payload).eq("id", id).select().single();
     if (error) throw error;
     return data;
   }
 
-  const { data, error } = await client
-    .from(config.productsTable)
-    .insert([payload])
-    .select()
-    .single();
-
+  const { data, error } = await client.from(config.productsTable).insert([payload]).select().single();
   if (error) throw error;
   return data;
+}
+
+async function saveOptionalProductFields(savedProduct, formData) {
+  if (!savedProduct?.id) return;
+
+  const optionalPayload = {};
+  const optionalMap = {
+    meta_title: clean(formData.get("meta_title")),
+    meta_description: clean(formData.get("meta_description")),
+    keywords: clean(formData.get("keywords"))
+  };
+
+  Object.entries(optionalMap).forEach(([key, value]) => {
+    if (Object.prototype.hasOwnProperty.call(savedProduct, key)) optionalPayload[key] = value;
+  });
+
+  const isFeatured = formData.get("is_featured") === "on";
+  if (Object.prototype.hasOwnProperty.call(savedProduct, "is_featured")) {
+    optionalPayload.is_featured = isFeatured;
+  } else if (Object.prototype.hasOwnProperty.call(savedProduct, "featured")) {
+    optionalPayload.featured = isFeatured;
+  }
+
+  if (!Object.keys(optionalPayload).length) return;
+
+  const config = getAdminConfig();
+  const { error } = await client.from(config.productsTable).update(optionalPayload).eq("id", savedProduct.id);
+  if (error) console.warn("Optional product fields were not saved:", error.message || error);
 }
 
 async function resolveGalleryUrls(formData) {
   const config = getAdminConfig();
   const files = Array.from(document.getElementById("galleryFiles").files || []);
   const currentGallery = parseGallery(formData.get("current_gallery"));
-
   if (!files.length) return currentGallery;
 
   for (let index = 0; index < files.length; index += 1) {
@@ -303,8 +424,7 @@ async function resolveGalleryUrls(formData) {
 async function loadProducts() {
   await ensureAdminSession();
   const config = getAdminConfig();
-
-  productList.innerHTML = "<p>Loading products...</p>";
+  productList.innerHTML = renderLoadingState("Loading products...");
 
   try {
     const { data, error } = await client
@@ -314,26 +434,35 @@ async function loadProducts() {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    renderProducts(data || []);
+    productsCache = data || [];
+    renderProducts(productsCache);
+    renderDashboard();
   } catch (error) {
-    productList.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+    productList.innerHTML = renderEmptyState(error.message || "Failed to load products.");
+    showToast(error.message || "Failed to load products.", "error");
   }
 }
 
 function renderProducts(products) {
   if (!products.length) {
-    productList.innerHTML = "<p>No products yet.</p>";
+    productList.innerHTML = renderEmptyState("No products yet", "Add your first product to start building the storefront catalog.");
     return;
   }
 
   productList.innerHTML = products.map((product) => `
     <article class="admin-product">
-      <img src="${escapeAttribute(product.image_url || "")}" alt="">
-      <div>
+      ${renderMediaThumb(product.image_url, product.name || "Product", "product")}
+      <div class="admin-product-info">
         <h3>${escapeHtml(product.name || "Untitled Product")}</h3>
-        <p>${escapeHtml(product.category || "Uncategorized")}</p>
-        <p>${escapeHtml(product.short_desc || "")}</p>
-        <p>${escapeHtml(product.price || "")}</p>
+        <div class="admin-product-meta">
+          <span class="status-pill ${escapeAttribute(normalizeStatusClass(product.status))}">${escapeHtml(product.status || "published")}</span>
+          <span class="meta-chip">${escapeHtml(product.category || "Uncategorized")}</span>
+          <span class="meta-chip">Price: ${escapeHtml(product.price || "-")}</span>
+          <span class="meta-chip">MOQ: ${escapeHtml(product.moq || "-")}</span>
+          <span class="meta-chip">Sort: ${escapeHtml(product.sort_order ?? 0)}</span>
+          ${isProductFeatured(product) ? '<span class="meta-chip">Featured</span>' : ""}
+        </div>
+        <p>${escapeHtml(product.short_desc || product.description || "No product summary yet.")}</p>
       </div>
       <div class="admin-product-actions">
         <button type="button" data-action="edit" data-id="${escapeAttribute(product.id)}">Edit</button>
@@ -344,15 +473,9 @@ function renderProducts(products) {
 
   productList.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
-      const product = products.find((item) => item.id === button.dataset.id);
-
-      if (button.dataset.action === "edit") {
-        editProduct(product);
-      }
-
-      if (button.dataset.action === "delete") {
-        deleteProduct(product);
-      }
+      const product = products.find((item) => String(item.id) === String(button.dataset.id));
+      if (button.dataset.action === "edit") editProduct(product);
+      if (button.dataset.action === "delete") deleteProduct(product);
     });
   });
 }
@@ -377,78 +500,66 @@ function editProduct(product) {
   form.short_desc.value = product.short_desc || "";
   form.description.value = product.description || "";
   form.features.value = product.features || "";
+  if (form.meta_title) form.meta_title.value = product.meta_title || "";
+  if (form.meta_description) form.meta_description.value = product.meta_description || "";
+  if (form.keywords) form.keywords.value = product.keywords || "";
+  if (form.is_featured) form.is_featured.checked = isProductFeatured(product);
   removeProductVideoButton.hidden = !(product.video_url || product.product_video);
   productVideoStatus.textContent = (product.video_url || product.product_video) ? "Product video attached." : "";
   submitButton.textContent = "Update Product";
   cancelEditButton.hidden = false;
   setStatus("Editing product.");
   renderProductGallery(normalizeGallery(product.gallery));
+  activateTab("productsTab");
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function deleteProduct(product) {
   await ensureAdminSession();
   const config = getAdminConfig();
-
   if (!product) return;
-
   const confirmed = window.confirm(`Delete ${product.name || "this product"}?`);
-
   if (!confirmed) return;
 
   setStatus("Deleting product...");
-  await deleteProductStorageFiles(product);
-  const { error } = await client
-    .from(config.productsTable)
-    .delete()
-    .eq("id", product.id);
-
-  if (error) {
-    setStatus(error.message || "Failed to delete product.");
-    return;
+  try {
+    await deleteProductStorageFiles(product);
+    const { error } = await client.from(config.productsTable).delete().eq("id", product.id);
+    if (error) throw error;
+    setStatus("Product deleted.");
+    showToast("Product deleted.");
+    await loadProducts();
+  } catch (error) {
+    const message = error.message || "Failed to delete product.";
+    setStatus(message);
+    showToast(message, "error");
   }
-
-  setStatus("Product deleted.");
-  await loadProducts();
 }
 
 async function deleteProductStorageFiles(product) {
   const config = getAdminConfig();
-  const urls = [
-    product.image_url,
-    ...(normalizeGallery(product.gallery)),
-    product.video_url
-  ].filter(Boolean);
-
+  const urls = [product.image_url, ...normalizeGallery(product.gallery), product.video_url].filter(Boolean);
   const paths = [...new Set(urls.map((url) => storagePathFromPublicUrl(url)).filter(Boolean))];
-
   if (!paths.length) return;
-
   const { error } = await client.storage.from(config.storageBucket).remove(paths);
-
-  if (error) {
-    console.log("Storage cleanup failed:", error);
-  }
+  if (error) console.log("Storage cleanup failed:", error);
 }
 
 function storagePathFromPublicUrl(url) {
   const config = getAdminConfig();
-
   try {
     const parsed = new URL(url);
     const marker = `/storage/v1/object/public/${config.storageBucket}/`;
     const index = parsed.pathname.indexOf(marker);
-
     if (index === -1) return "";
-
     return decodeURIComponent(parsed.pathname.slice(index + marker.length));
   } catch {
     return "";
   }
 }
-
 function renderProductGallery(images) {
   if (!images.length) {
-    productGalleryList.innerHTML = "<p>No gallery images yet.</p>";
+    productGalleryList.innerHTML = renderEmptyState("No gallery images yet", "Upload extra product angles or detail shots.");
     return;
   }
 
@@ -477,7 +588,6 @@ function updateGallerySort(index, sortOrder) {
   const gallery = parseGallery(form.current_gallery.value);
   const [item] = gallery.splice(Number(index), 1);
   const target = Math.max(0, Math.min(gallery.length, Number(sortOrder || 1) - 1));
-
   gallery.splice(target, 0, item);
   form.current_gallery.value = JSON.stringify(gallery);
   renderProductGallery(gallery);
@@ -486,52 +596,41 @@ function updateGallerySort(index, sortOrder) {
 async function setMainProductImage(imageUrl) {
   await ensureAdminSession();
   const config = getAdminConfig();
-
   const productId = form.id.value;
-
   if (!productId) return;
 
-  const { error } = await client
-    .from(config.productsTable)
-    .update({ image_url: imageUrl })
-    .eq("id", productId);
-
+  const { error } = await client.from(config.productsTable).update({ image_url: imageUrl }).eq("id", productId);
   if (error) {
-    window.alert(error.message || "Failed to set main image.");
+    showToast(error.message || "Failed to set main image.", "error");
     return;
   }
 
   form.current_image_url.value = imageUrl;
   setStatus("Main image updated.");
+  showToast("Main image updated.");
   await loadProducts();
 }
 
 function deleteGalleryImage(index) {
   const confirmed = window.confirm("Delete this gallery image?");
-
   if (!confirmed) return;
-
   const gallery = parseGallery(form.current_gallery.value);
   gallery.splice(Number(index), 1);
   form.current_gallery.value = JSON.stringify(gallery);
   renderProductGallery(gallery);
+  showToast("Gallery image removed from this product draft.");
 }
 
 async function resolveCategoryImageUrl(formData) {
   const config = getAdminConfig();
   const file = document.getElementById("categoryImageFile").files[0];
   const currentImageUrl = formData.get("current_image_url");
-
-  if (!file) {
-    return currentImageUrl || "";
-  }
-
+  if (!file) return currentImageUrl || "";
   return uploadFile(file, config.storageBucket, "categories");
 }
 
 async function saveCategory(formData, imageUrl) {
   await ensureAdminSession();
-
   const id = formData.get("id");
   const name = clean(formData.get("name"));
   const slug = clean(formData.get("slug")) || slugify(name);
@@ -546,9 +645,7 @@ async function saveCategory(formData, imageUrl) {
     status: clean(formData.get("status")) || "published"
   };
 
-  if (!payload.name) {
-    throw new Error("Category name is required.");
-  }
+  if (!payload.name) throw new Error("Category name is required.");
 
   if (id) {
     const { error } = await client.from("categories").update(payload).eq("id", id);
@@ -562,8 +659,7 @@ async function saveCategory(formData, imageUrl) {
 
 async function loadCategories() {
   await ensureAdminSession();
-
-  categoryList.innerHTML = "<p>Loading categories...</p>";
+  categoryList.innerHTML = renderLoadingState("Loading categories...");
 
   try {
     const { data, error } = await client
@@ -573,27 +669,32 @@ async function loadCategories() {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    renderCategories(data || []);
+    categoriesCache = data || [];
+    renderCategories(categoriesCache);
+    renderDashboard();
   } catch (error) {
-    categoryList.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+    categoryList.innerHTML = renderEmptyState(error.message || "Failed to load categories.");
+    showToast(error.message || "Failed to load categories.", "error");
   }
 }
 
 function renderCategories(categories) {
   if (!categories.length) {
-    categoryList.innerHTML = "<p>No categories yet.</p>";
+    categoryList.innerHTML = renderEmptyState("No categories yet", "Create product categories for a cleaner buyer experience.");
     return;
   }
 
   categoryList.innerHTML = categories.map((category) => `
     <article class="admin-product">
-      <img src="${escapeAttribute(category.image_url || "")}" alt="">
-      <div>
+      ${renderMediaThumb(category.image_url, category.name || "Category", "category")}
+      <div class="admin-product-info">
         <h3>${escapeHtml(category.name || "Untitled Category")}</h3>
-        <p>${escapeHtml(category.slug || "")}</p>
-        <p>${escapeHtml(category.description || "")}</p>
-        <p>${escapeHtml(category.link || "")}</p>
-        <span class="status-pill">${escapeHtml(category.status || "hidden")}</span>
+        <div class="admin-product-meta">
+          <span class="status-pill ${escapeAttribute(normalizeStatusClass(category.status))}">${escapeHtml(category.status || "hidden")}</span>
+          <span class="meta-chip">Slug: ${escapeHtml(category.slug || "-")}</span>
+          <span class="meta-chip">Sort: ${escapeHtml(category.sort_order ?? 0)}</span>
+        </div>
+        <p>${escapeHtml(category.description || category.link || "No category description yet.")}</p>
       </div>
       <div class="admin-product-actions">
         <button type="button" data-action="edit" data-id="${escapeAttribute(category.id)}">Edit</button>
@@ -604,8 +705,7 @@ function renderCategories(categories) {
 
   categoryList.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
-      const category = categories.find((item) => item.id === button.dataset.id);
-
+      const category = categories.find((item) => String(item.id) === String(button.dataset.id));
       if (button.dataset.action === "edit") editCategory(category);
       if (button.dataset.action === "delete") deleteCategory(category);
     });
@@ -614,7 +714,7 @@ function renderCategories(categories) {
 
 function editCategory(category) {
   if (!category) return;
-
+  categorySlugTouched = true;
   categoryForm.id.value = category.id || "";
   categoryForm.current_image_url.value = category.image_url || "";
   categoryForm.name.value = category.name || "";
@@ -626,25 +726,27 @@ function editCategory(category) {
   categorySubmitButton.textContent = "Update Category";
   cancelCategoryEditButton.hidden = false;
   categoryStatus.textContent = "Editing category.";
+  activateTab("categoriesTab");
+  categoryForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function deleteCategory(category) {
   await ensureAdminSession();
-
   if (!category) return;
-
   const confirmed = window.confirm(`Delete ${category.name || "this category"}?`);
   if (!confirmed) return;
 
-  const { error } = await client.from("categories").delete().eq("id", category.id);
-
-  if (error) {
-    categoryStatus.textContent = error.message || "Failed to delete category.";
-    return;
+  try {
+    const { error } = await client.from("categories").delete().eq("id", category.id);
+    if (error) throw error;
+    categoryStatus.textContent = "Category deleted.";
+    showToast("Category deleted.");
+    await loadCategories();
+  } catch (error) {
+    const message = error.message || "Failed to delete category.";
+    categoryStatus.textContent = message;
+    showToast(message, "error");
   }
-
-  categoryStatus.textContent = "Category deleted.";
-  await loadCategories();
 }
 
 function resetCategoryForm() {
@@ -653,27 +755,24 @@ function resetCategoryForm() {
   categoryForm.current_image_url.value = "";
   categorySubmitButton.textContent = "Add Category";
   cancelCategoryEditButton.hidden = true;
+  categorySlugTouched = false;
 }
 
 async function resolveFactoryVideoUrl(formData) {
   const session = await ensureAdminSession();
   console.log("Authenticated factory video user:", session.user?.email || "unknown");
-
   const file = document.getElementById("factoryVideoFile").files[0];
   const currentVideoUrl = formData.get("current_video_url");
-
   if (!file) {
     if (currentVideoUrl) return currentVideoUrl;
     throw new Error("Please choose an MP4 video.");
   }
-
   return uploadFile(file, "factory-videos", "homepage");
 }
 
 async function saveFactoryVideo(formData, videoUrl) {
   const session = await ensureAdminSession();
   console.log("Authenticated factory media user:", session.user?.email || "unknown");
-
   const id = formData.get("id");
   const payload = {
     title: clean(formData.get("title")),
@@ -683,9 +782,7 @@ async function saveFactoryVideo(formData, videoUrl) {
     status: clean(formData.get("status")) || "published"
   };
 
-  if (!payload.title) {
-    throw new Error("Video title is required.");
-  }
+  if (!payload.title) throw new Error("Video title is required.");
 
   if (id) {
     const { error } = await client.from("factory_media").update(payload).eq("id", id);
@@ -699,8 +796,7 @@ async function saveFactoryVideo(formData, videoUrl) {
 
 async function loadFactoryVideos() {
   await ensureAdminSession();
-
-  factoryVideoList.innerHTML = "<p>Loading videos...</p>";
+  factoryVideoList.innerHTML = renderLoadingState("Loading videos...");
 
   try {
     const { data, error } = await client
@@ -710,25 +806,29 @@ async function loadFactoryVideos() {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    renderFactoryVideos(data || []);
+    factoryVideosCache = data || [];
+    renderFactoryVideos(factoryVideosCache);
   } catch (error) {
-    factoryVideoList.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+    factoryVideoList.innerHTML = renderEmptyState(error.message || "Failed to load videos.");
+    showToast(error.message || "Failed to load videos.", "error");
   }
 }
-
 function renderFactoryVideos(videos) {
   if (!videos.length) {
-    factoryVideoList.innerHTML = "<p>No factory videos yet.</p>";
+    factoryVideoList.innerHTML = renderEmptyState("No videos uploaded", "Upload MP4 media when you want to feature production or product clips.");
     return;
   }
 
   factoryVideoList.innerHTML = videos.map((video) => `
     <article class="admin-product">
-      <video class="admin-video-preview" src="${escapeAttribute(video.video_url || "")}" muted></video>
-      <div>
+      <video class="admin-video-preview" src="${escapeAttribute(video.video_url || "")}" muted playsinline></video>
+      <div class="admin-product-info">
         <h3>${escapeHtml(video.title || "Untitled Video")}</h3>
-        <p>${escapeHtml(video.description || "")}</p>
-        <span class="status-pill">${escapeHtml(video.status || "draft")}</span>
+        <div class="admin-product-meta">
+          <span class="status-pill ${escapeAttribute(normalizeStatusClass(video.status))}">${escapeHtml(video.status || "draft")}</span>
+          <span class="meta-chip">Sort: ${escapeHtml(video.sort_order ?? 0)}</span>
+        </div>
+        <p>${escapeHtml(video.description || "No video description yet.")}</p>
       </div>
       <div class="admin-product-actions">
         <button type="button" data-action="edit" data-id="${escapeAttribute(video.id)}">Edit</button>
@@ -739,8 +839,7 @@ function renderFactoryVideos(videos) {
 
   factoryVideoList.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
-      const video = videos.find((item) => item.id === button.dataset.id);
-
+      const video = videos.find((item) => String(item.id) === String(button.dataset.id));
       if (button.dataset.action === "edit") editFactoryVideo(video);
       if (button.dataset.action === "delete") deleteFactoryVideo(video);
     });
@@ -749,7 +848,6 @@ function renderFactoryVideos(videos) {
 
 function editFactoryVideo(video) {
   if (!video) return;
-
   factoryForm.id.value = video.id || "";
   factoryForm.current_video_url.value = video.video_url || "";
   factoryForm.title.value = video.title || "";
@@ -759,25 +857,27 @@ function editFactoryVideo(video) {
   factorySubmitButton.textContent = "Update Video";
   cancelFactoryEditButton.hidden = false;
   factoryStatus.textContent = "Editing video.";
+  activateTab("factoryTab");
+  factoryForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function deleteFactoryVideo(video) {
   await ensureAdminSession();
-
   if (!video) return;
-
   const confirmed = window.confirm(`Delete ${video.title || "this video"}?`);
   if (!confirmed) return;
 
-  const { error } = await client.from("factory_media").delete().eq("id", video.id);
-
-  if (error) {
-    factoryStatus.textContent = error.message || "Failed to delete video.";
-    return;
+  try {
+    const { error } = await client.from("factory_media").delete().eq("id", video.id);
+    if (error) throw error;
+    factoryStatus.textContent = "Video deleted.";
+    showToast("Video deleted.");
+    await loadFactoryVideos();
+  } catch (error) {
+    const message = error.message || "Failed to delete video.";
+    factoryStatus.textContent = message;
+    showToast(message, "error");
   }
-
-  factoryStatus.textContent = "Video deleted.";
-  await loadFactoryVideos();
 }
 
 function resetFactoryForm() {
@@ -790,8 +890,7 @@ function resetFactoryForm() {
 
 async function loadInquiries() {
   await ensureAdminSession();
-
-  inquiryList.innerHTML = "<p>Loading inquiries...</p>";
+  inquiryList.innerHTML = renderLoadingState("Loading inquiries...");
 
   try {
     const { data, error } = await client
@@ -800,67 +899,90 @@ async function loadInquiries() {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    renderInquiries(data || []);
+    inquiriesCache = data || [];
+    renderInquiries(inquiriesCache);
+    renderDashboard();
   } catch (error) {
-    inquiryList.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+    inquiryList.innerHTML = renderEmptyState(error.message || "Failed to load inquiries.");
+    showToast(error.message || "Failed to load inquiries.", "error");
   }
 }
 
 function renderInquiries(inquiries) {
   if (!inquiries.length) {
-    inquiryList.innerHTML = "<p>No inquiries yet.</p>";
+    inquiryList.innerHTML = renderEmptyState("No inquiries yet", "New buyer inquiries will appear here as lead cards.");
     return;
   }
 
-  inquiryList.innerHTML = inquiries.map((inquiry) => `
-    <article class="admin-inquiry" data-inquiry-id="${escapeAttribute(inquiry.id)}">
-      <div>
-        <h3>${escapeHtml(inquiry.name || "Unnamed Customer")}</h3>
-        <select class="inquiry-status-select" data-action="status" data-id="${escapeAttribute(inquiry.id)}">
-          ${renderStatusOptions(inquiry.status)}
-        </select>
-        <div class="inquiry-meta">
-          <p><strong>Email:</strong> ${escapeHtml(inquiry.email || "-")}</p>
-          <p><strong>WhatsApp:</strong> ${escapeHtml(inquiry.whatsapp || "-")}</p>
-          <p><strong>Interested Product:</strong> ${escapeHtml(inquiry.product || "-")}</p>
-          <p><strong>Submitted:</strong> ${escapeHtml(formatDate(inquiry.created_at))}</p>
+  inquiryList.innerHTML = inquiries.map((inquiry) => {
+    const whatsappUrl = buildWhatsAppLink(inquiry.whatsapp);
+    return `
+      <article class="admin-inquiry" data-inquiry-id="${escapeAttribute(inquiry.id)}">
+        <div>
+          <div class="inquiry-head">
+            <div>
+              <h3>${escapeHtml(inquiry.name || "Unnamed Customer")}</h3>
+              <p>${escapeHtml(inquiry.email || "No email provided")}</p>
+            </div>
+            <select class="inquiry-status-select ${escapeAttribute(normalizeInquiryStatus(inquiry.status))}" data-action="status" data-id="${escapeAttribute(inquiry.id)}">
+              ${renderStatusOptions(inquiry.status)}
+            </select>
+          </div>
+          <div class="inquiry-meta">
+            <p><strong>Email:</strong> ${escapeHtml(inquiry.email || "-")}</p>
+            <p><strong>WhatsApp:</strong> ${escapeHtml(inquiry.whatsapp || "-")}</p>
+            <p><strong>Interested Product:</strong> ${escapeHtml(inquiry.product || "-")}</p>
+            <p><strong>Submitted:</strong> ${escapeHtml(formatDate(inquiry.created_at))}</p>
+          </div>
+          <div class="inquiry-detail" hidden>
+            <div class="inquiry-detail-grid">
+              <div class="detail-block">
+                <strong>Customer Info</strong>
+                <p>${escapeHtml(inquiry.name || "-")}<br>${escapeHtml(inquiry.email || "-")}<br>${escapeHtml(inquiry.whatsapp || "-")}</p>
+              </div>
+              <div class="detail-block">
+                <strong>Interested Product</strong>
+                <p>${escapeHtml(inquiry.product || "-")}<br>${escapeHtml(formatDate(inquiry.created_at))}</p>
+              </div>
+            </div>
+            <div class="detail-block">
+              <strong>Inquiry Message</strong>
+              <p class="inquiry-message">${escapeHtml(inquiry.message || "No message provided.")}</p>
+            </div>
+            <div class="detail-block">
+              <strong>Quick Reply Template</strong>
+              <p class="quick-reply">Thank you for your inquiry. Could you please share your target quantity, destination country, and preferred product specifications? We will prepare a quotation for you shortly.</p>
+            </div>
+          </div>
         </div>
-        <div class="inquiry-detail" hidden>
-          <p class="inquiry-message">${escapeHtml(inquiry.message || "")}</p>
+        <div class="inquiry-actions">
+          ${whatsappUrl ? `<a class="wa-link" href="${escapeAttribute(whatsappUrl)}" target="_blank" rel="noopener">Open WhatsApp</a>` : ""}
+          <button type="button" data-action="view" data-id="${escapeAttribute(inquiry.id)}">View Details</button>
+          <button type="button" data-action="delete" data-id="${escapeAttribute(inquiry.id)}">Delete</button>
         </div>
-      </div>
-      <div class="inquiry-actions">
-        <button type="button" data-action="view" data-id="${escapeAttribute(inquiry.id)}">View Details</button>
-        <button type="button" data-action="delete" data-id="${escapeAttribute(inquiry.id)}">Delete</button>
-      </div>
-    </article>
-  `).join("");
+      </article>
+    `;
+  }).join("");
 
   inquiryList.querySelectorAll('button[data-action="view"]').forEach((button) => {
-    button.addEventListener("click", () => {
-      toggleInquiryDetail(button);
-    });
+    button.addEventListener("click", () => toggleInquiryDetail(button));
   });
 
   inquiryList.querySelectorAll('button[data-action="delete"]').forEach((button) => {
     button.addEventListener("click", () => {
-      console.log("delete button clicked");
       const inquiry = inquiries.find((item) => String(item.id) === String(button.dataset.id));
       deleteInquiry(inquiry);
     });
   });
 
   inquiryList.querySelectorAll(".inquiry-status-select").forEach((select) => {
-    select.addEventListener("change", () => {
-      updateInquiryStatus(select.dataset.id, select.value);
-    });
+    select.addEventListener("change", () => updateInquiryStatus(select.dataset.id, select.value));
   });
 }
 
 function renderStatusOptions(status) {
   const current = normalizeInquiryStatus(status);
-  const statuses = ["new", "replied", "closed"];
-
+  const statuses = ["new", "replied", "quoted", "closed"];
   return statuses.map((item) => `
     <option value="${item}" ${item === current ? "selected" : ""}>${capitalize(item)}</option>
   `).join("");
@@ -868,7 +990,7 @@ function renderStatusOptions(status) {
 
 function normalizeInquiryStatus(status) {
   const value = String(status || "new").toLowerCase();
-  return ["new", "replied", "closed"].includes(value) ? value : "new";
+  return ["new", "replied", "quoted", "closed"].includes(value) ? value : "new";
 }
 
 function capitalize(value) {
@@ -878,57 +1000,142 @@ function capitalize(value) {
 function toggleInquiryDetail(button) {
   const card = button.closest(".admin-inquiry");
   const detail = card?.querySelector(".inquiry-detail");
-
   if (!detail) return;
-
   detail.hidden = !detail.hidden;
   button.textContent = detail.hidden ? "View Details" : "Hide Details";
 }
 
 async function updateInquiryStatus(id, status) {
   await ensureAdminSession();
-
-  const { error } = await client
-    .from("inquiries")
-    .update({ status })
-    .eq("id", id);
+  const normalizedStatus = normalizeInquiryStatus(status);
+  const { error } = await client.from("inquiries").update({ status: normalizedStatus }).eq("id", id);
 
   if (error) {
-    window.alert(error.message || "Failed to update inquiry status.");
+    showToast(error.message || "Failed to update inquiry status.", "error");
     await loadInquiries();
+    return;
   }
+
+  inquiriesCache = inquiriesCache.map((inquiry) => (
+    String(inquiry.id) === String(id) ? { ...inquiry, status: normalizedStatus } : inquiry
+  ));
+  renderDashboard();
+  showToast("Inquiry status updated.");
 }
 
 async function deleteInquiry(inquiry) {
   await ensureAdminSession();
-
   if (!inquiry) return;
-
   const confirmed = window.confirm(`Delete inquiry from ${inquiry.name || "this customer"}?`);
-
   if (!confirmed) return;
 
-  console.log("deleting inquiry id", inquiry.id);
-
-  const { data, error } = await client
-    .from("inquiries")
-    .delete()
-    .eq("id", inquiry.id)
-    .select();
-
-  if (error) {
-    console.log("delete error", error);
-    window.alert(error.message || "Failed to delete inquiry.");
-    return;
+  try {
+    const { error } = await client.from("inquiries").delete().eq("id", inquiry.id);
+    if (error) throw error;
+    showToast("Inquiry deleted.");
+    await loadInquiries();
+  } catch (error) {
+    showToast(error.message || "Failed to delete inquiry.", "error");
   }
+}
 
-  console.log("delete success", data);
-  await loadInquiries();
+function renderDashboard() {
+  if (!dashboardStats || !recentProducts || !recentInquiries) return;
+
+  const publishedProducts = productsCache.filter((product) => normalizeStatusClass(product.status) === "published").length;
+  const newInquiries = inquiriesCache.filter((inquiry) => normalizeInquiryStatus(inquiry.status) === "new").length;
+
+  dashboardStats.innerHTML = [
+    { label: "Total Products", value: productsCache.length, hint: "All product records" },
+    { label: "Published Products", value: publishedProducts, hint: "Visible storefront items" },
+    { label: "Categories", value: categoriesCache.length, hint: "Active collection structure" },
+    { label: "New Inquiries", value: newInquiries, hint: "Leads awaiting response" }
+  ].map((item) => `
+    <article class="stat-card">
+      <p>${escapeHtml(item.label)}</p>
+      <strong>${escapeHtml(item.value)}</strong>
+      <span>${escapeHtml(item.hint)}</span>
+    </article>
+  `).join("");
+
+  recentProducts.innerHTML = productsCache.length
+    ? productsCache.slice(0, 5).map((product) => `
+      <article class="compact-item">
+        ${renderCompactThumb(product.image_url, product.name || "Product")}
+        <div>
+          <h3>${escapeHtml(product.name || "Untitled Product")}</h3>
+          <p>${escapeHtml(product.category || "Uncategorized")} · ${escapeHtml(product.status || "published")}</p>
+        </div>
+        <span class="meta-chip">${escapeHtml(product.sort_order ?? 0)}</span>
+      </article>
+    `).join("")
+    : renderEmptyState("No products yet", "Recent products will appear after you add catalog items.");
+
+  recentInquiries.innerHTML = inquiriesCache.length
+    ? inquiriesCache.slice(0, 5).map((inquiry) => `
+      <article class="compact-item">
+        <div class="compact-thumb">${escapeHtml(getInitials(inquiry.name || inquiry.email || "Lead"))}</div>
+        <div>
+          <h3>${escapeHtml(inquiry.name || "Unnamed Customer")}</h3>
+          <p>${escapeHtml(inquiry.product || inquiry.email || "No product specified")}</p>
+        </div>
+        <span class="status-pill ${escapeAttribute(normalizeInquiryStatus(inquiry.status))}">${escapeHtml(normalizeInquiryStatus(inquiry.status))}</span>
+      </article>
+    `).join("")
+    : renderEmptyState("No inquiries yet", "New buyer leads will appear here.");
+}
+function buildWhatsAppLink(value) {
+  const digits = String(value || "").replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  const text = "Hello, thank you for your inquiry. Could you please share your target quantity and destination country?";
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+}
+
+function renderMediaThumb(url, alt, type) {
+  if (url) return `<img src="${escapeAttribute(url)}" alt="${escapeAttribute(alt)}">`;
+  const className = type === "category" ? "category-thumb-placeholder" : "product-thumb-placeholder";
+  return `<div class="${className}">${escapeHtml(type === "category" ? "Category" : "Product")}</div>`;
+}
+
+function renderCompactThumb(url, alt) {
+  if (url) return `<img class="compact-thumb" src="${escapeAttribute(url)}" alt="${escapeAttribute(alt)}">`;
+  return `<div class="compact-thumb">${escapeHtml(getInitials(alt))}</div>`;
+}
+
+function renderLoadingState(message) {
+  return `<div class="empty-state"><p>${escapeHtml(message)}</p></div>`;
+}
+
+function renderEmptyState(title, description = "") {
+  return `
+    <div class="empty-state">
+      <h3>${escapeHtml(title)}</h3>
+      ${description ? `<p>${escapeHtml(description)}</p>` : ""}
+    </div>
+  `;
+}
+
+function normalizeStatusClass(status) {
+  const value = String(status || "published").toLowerCase();
+  if (["draft", "hidden"].includes(value)) return value;
+  return "published";
+}
+
+function isProductFeatured(product) {
+  return Boolean(product?.is_featured ?? product?.featured ?? false);
+}
+
+function getInitials(value) {
+  return String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((item) => item.charAt(0).toUpperCase())
+    .join("") || "--";
 }
 
 function formatDate(value) {
   if (!value) return "-";
-
   return new Date(value).toLocaleString();
 }
 
@@ -939,6 +1146,10 @@ function resetForm() {
   form.current_video_url.value = "";
   form.current_gallery.value = "";
   form.remove_product_video.value = "";
+  if (form.meta_title) form.meta_title.value = "";
+  if (form.meta_description) form.meta_description.value = "";
+  if (form.keywords) form.keywords.value = "";
+  if (form.is_featured) form.is_featured.checked = false;
   productGalleryList.innerHTML = "";
   productVideoStatus.textContent = "";
   removeProductVideoButton.hidden = true;
@@ -951,8 +1162,20 @@ function setBusy(isBusy) {
 }
 
 function setButtonBusy(button, isBusy) {
+  if (!button) return;
   button.disabled = isBusy;
   button.classList.toggle("is-loading", isBusy);
+}
+
+function showToast(message, type = "success") {
+  if (!toast || !message) return;
+  window.clearTimeout(toastTimer);
+  toast.textContent = message;
+  toast.classList.toggle("is-error", type === "error");
+  toast.classList.add("is-visible");
+  toastTimer = window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+  }, 3200);
 }
 
 function clean(value) {
@@ -992,17 +1215,13 @@ function setStatus(message) {
 
 function getAdminConfig() {
   const config = window.XIQI_CONFIG;
-
-  if (!config) {
-    throw new Error("XIQI_CONFIG missing. Please check supabase-config.js loading order.");
-  }
-
+  if (!config) throw new Error("XIQI_CONFIG missing. Please check supabase-config.js loading order.");
   return config;
 }
 
 function showBlockingAdminError(message) {
   document.addEventListener("DOMContentLoaded", () => {
-    document.body.insertAdjacentHTML("afterbegin", `<div style="padding:16px;color:#b91c1c;background:#fee2e2;font-weight:700">${message}</div>`);
+    document.body.insertAdjacentHTML("afterbegin", `<div style="padding:16px;color:#fecaca;background:#7f1d1d;font-weight:700">${message}</div>`);
   });
 }
 

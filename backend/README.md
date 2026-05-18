@@ -1,4 +1,4 @@
-# XiQi Product Backend
+﻿# LinfTech Product Backend
 
 Minimal Express backend for Supabase product data and product image uploads.
 
@@ -36,3 +36,4 @@ Run `supabase-schema.sql` in the Supabase SQL editor before using the product AP
 For product image upload, the simplest setup is to add `SUPABASE_SERVICE_ROLE_KEY`
 to `backend/.env`. Without it, your Supabase table and storage policies must allow
 the anon key to insert products and upload files.
+
