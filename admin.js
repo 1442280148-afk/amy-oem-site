@@ -1,14 +1,13 @@
-﻿const config = window.XIQI_CONFIG;
+﻿document.addEventListener("DOMContentLoaded", () => {
 const client = window.supabaseClient;
+const config = window.XIQI_CONFIG;
 
 if (!config) {
   showBlockingAdminError("XIQI_CONFIG missing. Please check supabase-config.js loading order.");
-  throw new Error("XIQI_CONFIG missing. Please check supabase-config.js loading order.");
 }
 
 if (!client) {
   showBlockingAdminError("Supabase client missing. Please check supabase-config.js loading order.");
-  throw new Error("Supabase client missing. Please check supabase-config.js loading order.");
 }
 
 const form = document.getElementById("productForm");
@@ -1220,9 +1219,8 @@ function getAdminConfig() {
 }
 
 function showBlockingAdminError(message) {
-  document.addEventListener("DOMContentLoaded", () => {
-    document.body.insertAdjacentHTML("afterbegin", `<div style="padding:16px;color:#fecaca;background:#7f1d1d;font-weight:700">${message}</div>`);
-  });
+  if (!document.body) return;
+  document.body.insertAdjacentHTML("afterbegin", `<div style="padding:16px;color:#fecaca;background:#7f1d1d;font-weight:700">${message}</div>`);
 }
 
 function getJwtRole(accessToken) {
@@ -1252,4 +1250,5 @@ window.XIQI_ADMIN_READY
   .catch((error) => {
     console.warn(error.message || "Admin authentication failed.");
   });
+});
 

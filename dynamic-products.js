@@ -4,7 +4,7 @@
 });
 
 const config = window.XIQI_SUPABASE;
-const client = supabase.createClient(config.url, config.key);
+const dynamicProductsClient = window.supabaseClient;
 const defaultFilterCategories = [
   "Phone Cases",
   "Chargers",
@@ -45,7 +45,7 @@ async function loadFilterCategories() {
   if (!filterButtons) return;
 
   try {
-    const { data, error } = await client
+    const { data, error } = await dynamicProductsClient
       .from("categories")
       .select("*")
       .eq("status", "published")
@@ -188,7 +188,7 @@ async function loadProductDetail() {
   if (!id) return;
 
   try {
-    const { data, error } = await client
+    const { data, error } = await dynamicProductsClient
       .from(config.productsTable)
       .select("*")
       .eq("id", id)
@@ -203,7 +203,7 @@ async function loadProductDetail() {
 }
 
 async function fetchProducts() {
-  const { data, error } = await client
+  const { data, error } = await dynamicProductsClient
     .from(config.productsTable)
     .select("*")
     .eq("status", "published")

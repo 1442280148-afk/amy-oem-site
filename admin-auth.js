@@ -1,6 +1,4 @@
-const client = window.supabaseClient;
-
-if (!client) {
+if (!window.supabaseClient) {
   window.XIQI_ADMIN_AUTH_ERROR = "Supabase client missing. Please check supabase-config.js loading order.";
 }
 
@@ -24,14 +22,14 @@ async function protectAdminPage() {
   const {
     data: { session },
     error
-  } = await client.auth.getSession();
+  } = await window.supabaseClient.auth.getSession();
 
   if (error || !session) {
     window.location.href = "admin-login.html";
     throw new Error("Admin login required.");
   }
 
-  await client.auth.setSession({
+  await window.supabaseClient.auth.setSession({
     access_token: session.access_token,
     refresh_token: session.refresh_token
   });
@@ -41,7 +39,7 @@ async function protectAdminPage() {
 
   window.XIQI_ADMIN_SESSION = session;
   document.body.classList.add("admin-authenticated");
-  bindLogout(client);
+  bindLogout(window.supabaseClient);
 
   return session;
 }

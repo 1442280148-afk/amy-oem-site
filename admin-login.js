@@ -1,9 +1,9 @@
 const loginForm = document.getElementById("loginForm");
 const loginStatus = document.getElementById("loginStatus");
 const loginButton = loginForm.querySelector('button[type="submit"]');
-const client = window.supabaseClient;
+const loginSupabaseClient = window.supabaseClient;
 
-if (!client) {
+if (!loginSupabaseClient) {
   loginStatus.textContent = "Supabase client missing. Please check supabase-config.js loading order.";
   loginButton.disabled = true;
   throw new Error("Supabase client missing. Please check supabase-config.js loading order.");
@@ -22,7 +22,7 @@ loginForm.addEventListener("submit", async (event) => {
   const password = String(formData.get("password") || "");
 
   try {
-    const { data, error } = await client.auth.signInWithPassword({
+    const { data, error } = await loginSupabaseClient.auth.signInWithPassword({
       email,
       password
     });
@@ -30,14 +30,14 @@ loginForm.addEventListener("submit", async (event) => {
     if (error) throw error;
     if (!data.session) throw new Error("Login succeeded but no Supabase session was returned.");
 
-    await client.auth.setSession({
+    await loginSupabaseClient.auth.setSession({
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token
     });
 
     const {
       data: { session }
-    } = await client.auth.getSession();
+    } = await loginSupabaseClient.auth.getSession();
 
     if (!session) {
       throw new Error("Supabase session was not saved. Please try again.");
@@ -53,7 +53,7 @@ loginForm.addEventListener("submit", async (event) => {
 });
 
 async function checkExistingSession() {
-  const { data } = await client.auth.getSession();
+  const { data } = await loginSupabaseClient.auth.getSession();
 
   if (data.session) {
     window.location.href = "admin.html";

@@ -4,7 +4,7 @@
   if (!form) return;
 
   const config = window.XIQI_SUPABASE;
-  const client = getXiqiSupabaseClient(config);
+  const inquirySupabaseClient = getXiqiSupabaseClient(config);
   const button = form.querySelector('button[type="submit"]');
   const status = document.createElement("div");
   const productInput = form.querySelector('[name="product"]');
@@ -37,7 +37,7 @@
     };
 
     try {
-      const { error } = await client
+      const { error } = await inquirySupabaseClient
         .from("inquiries")
         .insert([data]);
 
@@ -118,9 +118,5 @@ async function sendInquiryEmail(data) {
 }
 
 function getXiqiSupabaseClient(config) {
-  if (!window.__XIQI_SUPABASE_CLIENT__) {
-    window.__XIQI_SUPABASE_CLIENT__ = supabase.createClient(config.url, config.key);
-  }
-
-  return window.__XIQI_SUPABASE_CLIENT__;
+  return window.supabaseClient;
 }

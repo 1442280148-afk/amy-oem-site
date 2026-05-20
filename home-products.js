@@ -10,8 +10,8 @@ async function loadHomeCategories() {
 
   try {
     const config = window.XIQI_SUPABASE;
-    const client = getXiqiSupabaseClient(config);
-    const { data, error } = await client
+    const homeCategoriesClient = getXiqiSupabaseClient(config);
+    const { data, error } = await homeCategoriesClient
       .from("categories")
       .select("id,name,slug,image_url,description,link,status,sort_order,created_at")
       .eq("status", "published")
@@ -81,8 +81,8 @@ async function loadHomeFeaturedProducts() {
 
   try {
     const config = window.XIQI_SUPABASE;
-    const client = getXiqiSupabaseClient(config);
-    const { data, error } = await client
+    const homeProductsClient = getXiqiSupabaseClient(config);
+    const { data, error } = await homeProductsClient
       .from(config.productsTable || "products")
       .select("id,name,category,image_url,short_desc,status,sort_order,created_at")
       .eq("status", "published")
@@ -173,11 +173,7 @@ function slugify(value) {
 }
 
 function getXiqiSupabaseClient(config) {
-  if (!window.__XIQI_SUPABASE_CLIENT__) {
-    window.__XIQI_SUPABASE_CLIENT__ = supabase.createClient(config.url, config.key);
-  }
-
-  return window.__XIQI_SUPABASE_CLIENT__;
+  return window.supabaseClient;
 }
 
 
