@@ -1,4 +1,4 @@
-create table if not exists products (
+﻿create table if not exists products (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   category text,
@@ -37,7 +37,7 @@ create index if not exists products_status_sort_idx
 on products (status, sort_order, created_at desc);
 
 insert into storage.buckets (id, name, public)
-values ('product-images', 'product-images', true)
+values ('products', 'products', true)
 on conflict (id) do nothing;
 
 alter table products enable row level security;
@@ -88,18 +88,18 @@ drop policy if exists "Authenticated can upload product images" on storage.objec
 drop policy if exists "Authenticated can delete product images" on storage.objects;
 create policy "Public can read product images"
 on storage.objects for select
-using (bucket_id = 'product-images');
+using (bucket_id = 'products');
 
 create policy "Authenticated can upload product images"
 on storage.objects for insert
 to authenticated
-with check (bucket_id = 'product-images');
+with check (bucket_id = 'products');
 
 drop policy if exists "Public can delete product files" on storage.objects;
 create policy "Authenticated can delete product images"
 on storage.objects for delete
 to authenticated
-using (bucket_id = 'product-images');
+using (bucket_id = 'products');
 
 create table if not exists inquiries (
   id uuid primary key default gen_random_uuid(),
@@ -279,3 +279,4 @@ to authenticated
 using (bucket_id = 'factory-videos');
 
 notify pgrst, 'reload schema';
+
