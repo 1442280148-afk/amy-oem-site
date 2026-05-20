@@ -10,7 +10,7 @@ window.XIQI_CONFIG = {
   url: window.SUPABASE_URL,
   key: window.SUPABASE_ANON_KEY,
   productsTable: "products",
-  storageBucket: "product-images"
+  storageBucket: "products"
 };
 
 window.XIQI_SUPABASE = window.XIQI_CONFIG;
