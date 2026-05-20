@@ -1,7 +1,7 @@
-const adminConfig = window.XIQI_CONFIG;
+﻿const adminConfig = window.XIQI_CONFIG;
 
-if (!adminConfig) {
-  window.XIQI_ADMIN_AUTH_ERROR = "XIQI_CONFIG missing. Please check supabase-config.js loading order.";
+if (!adminConfig || !adminConfig.url || !adminConfig.key) {
+  window.XIQI_ADMIN_AUTH_ERROR = "Supabase environment variables are not configured.";
 } else {
   window.XIQI_ADMIN_CLIENT = supabase.createClient(adminConfig.url, adminConfig.key, {
     auth: {

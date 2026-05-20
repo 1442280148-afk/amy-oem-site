@@ -1,7 +1,14 @@
-const loginForm = document.getElementById("loginForm");
+﻿const loginForm = document.getElementById("loginForm");
 const loginStatus = document.getElementById("loginStatus");
 const loginButton = loginForm.querySelector('button[type="submit"]');
 const config = window.XIQI_CONFIG;
+
+if (!config || !config.url || !config.key) {
+  loginStatus.textContent = "Supabase environment variables are not configured.";
+  loginButton.disabled = true;
+  throw new Error("Supabase environment variables are not configured.");
+}
+
 const client = supabase.createClient(config.url, config.key, {
   auth: {
     persistSession: true,
