@@ -4,7 +4,14 @@ window.SUPABASE_ANON_KEY = "PASTE_NEW_SUPABASE_PUBLISHABLE_KEY_HERE";
 if (window.supabase?.createClient) {
   window.supabaseClient = supabase.createClient(
     window.SUPABASE_URL,
-    window.SUPABASE_ANON_KEY
+    window.SUPABASE_ANON_KEY,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    }
   );
 } else {
   window.supabaseClient = null;

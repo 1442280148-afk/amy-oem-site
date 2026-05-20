@@ -4,7 +4,7 @@
   if (!form) return;
 
   const config = window.XIQI_SUPABASE;
-  const inquirySupabaseClient = getXiqiSupabaseClient(config);
+  const client = getXiqiSupabaseClient(config);
   const button = form.querySelector('button[type="submit"]');
   const status = document.createElement("div");
   const productInput = form.querySelector('[name="product"]');
@@ -37,7 +37,7 @@
     };
 
     try {
-      const { error } = await inquirySupabaseClient
+      const { error } = await client
         .from("inquiries")
         .insert([data]);
 

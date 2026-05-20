@@ -49,10 +49,9 @@ on products for select
 using (true);
 
 drop policy if exists "Public admin can manage products" on products;
-drop policy if exists "Authenticated can manage products" on products;
-create policy "Authenticated can manage products"
+drop policy if exists "Public can manage products" on products;
+create policy "Public can manage products"
 on products for all
-to authenticated
 using (true)
 with check (true);
 
@@ -76,29 +75,27 @@ using (true);
 
 drop policy if exists "Public admin can manage product images table" on product_images;
 drop policy if exists "Authenticated can manage product images table" on product_images;
-create policy "Authenticated can manage product images table"
+drop policy if exists "Public can manage product images table" on product_images;
+create policy "Public can manage product images table"
 on product_images for all
-to authenticated
 using (true)
 with check (true);
 
 drop policy if exists "Public can upload product images" on storage.objects;
 drop policy if exists "Public can read product images" on storage.objects;
-drop policy if exists "Authenticated can upload product images" on storage.objects;
-drop policy if exists "Authenticated can delete product images" on storage.objects;
+drop policy if exists "Public can upload product files" on storage.objects;
+drop policy if exists "Public can delete product files" on storage.objects;
 create policy "Public can read product images"
 on storage.objects for select
 using (bucket_id = 'products');
 
-create policy "Authenticated can upload product images"
+create policy "Public can upload product files"
 on storage.objects for insert
-to authenticated
 with check (bucket_id = 'products');
 
 drop policy if exists "Public can delete product files" on storage.objects;
-create policy "Authenticated can delete product images"
+create policy "Public can delete product files"
 on storage.objects for delete
-to authenticated
 using (bucket_id = 'products');
 
 create table if not exists inquiries (
@@ -126,24 +123,21 @@ on inquiries for insert
 with check (true);
 
 drop policy if exists "Public admin can manage inquiries" on inquiries;
-drop policy if exists "Authenticated can read inquiries" on inquiries;
-drop policy if exists "Authenticated can update inquiries" on inquiries;
-drop policy if exists "Authenticated can delete inquiries" on inquiries;
+drop policy if exists "Public can read inquiries" on inquiries;
+drop policy if exists "Public can update inquiries" on inquiries;
+drop policy if exists "Public can delete inquiries" on inquiries;
 
-create policy "Authenticated can read inquiries"
+create policy "Public can read inquiries"
 on inquiries for select
-to authenticated
 using (true);
 
-create policy "Authenticated can update inquiries"
+create policy "Public can update inquiries"
 on inquiries for update
-to authenticated
 using (true)
 with check (true);
 
-create policy "Authenticated can delete inquiries"
+create policy "Public can delete inquiries"
 on inquiries for delete
-to authenticated
 using (true);
 
 create table if not exists categories (
@@ -223,10 +217,9 @@ on categories for select
 using (true);
 
 drop policy if exists "Public admin can manage categories" on categories;
-drop policy if exists "Authenticated can manage categories" on categories;
-create policy "Authenticated can manage categories"
+drop policy if exists "Public can manage categories" on categories;
+create policy "Public can manage categories"
 on categories for all
-to authenticated
 using (true)
 with check (true);
 
@@ -249,34 +242,33 @@ on factory_media for select
 using (true);
 
 drop policy if exists "Public admin can manage factory media" on factory_media;
-drop policy if exists "Authenticated can manage factory media" on factory_media;
-create policy "Authenticated can manage factory media"
+drop policy if exists "Public can manage factory media" on factory_media;
+create policy "Public can manage factory media"
 on factory_media for all
-to authenticated
 using (true)
 with check (true);
 
 insert into storage.buckets (id, name, public)
-values ('factory-videos', 'factory-videos', true)
+values ('products', 'products', true)
 on conflict (id) do nothing;
 
 drop policy if exists "Public can upload factory videos" on storage.objects;
 drop policy if exists "Public can read factory videos" on storage.objects;
-drop policy if exists "Authenticated can upload factory videos" on storage.objects;
-drop policy if exists "Authenticated can delete factory videos" on storage.objects;
+drop policy if exists "Public can upload factory videos" on storage.objects;
+drop policy if exists "Public can delete factory videos" on storage.objects;
 create policy "Public can read factory videos"
 on storage.objects for select
-using (bucket_id = 'factory-videos');
+using (bucket_id = 'products');
 
-create policy "Authenticated can upload factory videos"
+create policy "Public can upload factory videos"
 on storage.objects for insert
-to authenticated
-with check (bucket_id = 'factory-videos');
+with check (bucket_id = 'products');
 
-create policy "Authenticated can delete factory videos"
+create policy "Public can delete factory videos"
 on storage.objects for delete
-to authenticated
-using (bucket_id = 'factory-videos');
+using (bucket_id = 'products');
 
 notify pgrst, 'reload schema';
+
+
 

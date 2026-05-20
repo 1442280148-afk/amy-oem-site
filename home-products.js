@@ -10,8 +10,8 @@ async function loadHomeCategories() {
 
   try {
     const config = window.XIQI_SUPABASE;
-    const homeCategoriesClient = getXiqiSupabaseClient(config);
-    const { data, error } = await homeCategoriesClient
+    const client = getXiqiSupabaseClient(config);
+    const { data, error } = await client
       .from("categories")
       .select("id,name,slug,image_url,description,link,status,sort_order,created_at")
       .eq("status", "published")
@@ -81,8 +81,8 @@ async function loadHomeFeaturedProducts() {
 
   try {
     const config = window.XIQI_SUPABASE;
-    const homeProductsClient = getXiqiSupabaseClient(config);
-    const { data, error } = await homeProductsClient
+    const client = getXiqiSupabaseClient(config);
+    const { data, error } = await client
       .from(config.productsTable || "products")
       .select("id,name,category,image_url,short_desc,status,sort_order,created_at")
       .eq("status", "published")

@@ -39,7 +39,6 @@ const recentInquiries = document.getElementById("recentInquiries");
 const refreshDashboardButton = document.getElementById("refreshDashboard");
 const toast = document.getElementById("adminToast");
 
-let adminSession = null;
 let productsCache = [];
 let categoriesCache = [];
 let factoryVideosCache = [];
@@ -54,30 +53,10 @@ setupRefreshDashboard();
 async function ensureAdminSession() {
   if (!client) {
     window.location.href = "admin-login.html";
-    throw new Error("Authenticated Supabase client is not available.");
+    throw new Error("Supabase client is not available.");
   }
 
-  const {
-    data: { session },
-    error
-  } = await client.auth.getSession();
-
-  if (error || !session) {
-    window.location.href = "admin-login.html";
-    throw new Error("Admin login required.");
-  }
-
-  adminSession = session;
-  window.XIQI_ADMIN_SESSION = session;
-
-  await client.auth.setSession({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token
-  });
-
-  console.log("Supabase admin role:", getJwtRole(session.access_token), session.user?.email || "unknown");
-
-  return adminSession;
+  return { mode: "public-admin" };
 }
 
 async function initAdmin() {
@@ -758,20 +737,19 @@ function resetCategoryForm() {
 }
 
 async function resolveFactoryVideoUrl(formData) {
-  const session = await ensureAdminSession();
-  console.log("Authenticated factory video user:", session.user?.email || "unknown");
+  await ensureAdminSession();
   const file = document.getElementById("factoryVideoFile").files[0];
   const currentVideoUrl = formData.get("current_video_url");
   if (!file) {
     if (currentVideoUrl) return currentVideoUrl;
     throw new Error("Please choose an MP4 video.");
   }
-  return uploadFile(file, "factory-videos", "homepage");
+  const config = getAdminConfig();
+  return uploadFile(file, config.storageBucket, "factory-videos");
 }
 
 async function saveFactoryVideo(formData, videoUrl) {
-  const session = await ensureAdminSession();
-  console.log("Authenticated factory media user:", session.user?.email || "unknown");
+  await ensureAdminSession();
   const id = formData.get("id");
   const payload = {
     title: clean(formData.get("title")),

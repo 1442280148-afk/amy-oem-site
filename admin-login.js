@@ -1,61 +1,16 @@
+const adminLoginClient = window.supabaseClient;
 const loginForm = document.getElementById("loginForm");
 const loginStatus = document.getElementById("loginStatus");
 const loginButton = loginForm.querySelector('button[type="submit"]');
-const loginSupabaseClient = window.supabaseClient;
 
-if (!loginSupabaseClient) {
+if (!adminLoginClient) {
   loginStatus.textContent = "Supabase client missing. Please check supabase-config.js loading order.";
   loginButton.disabled = true;
-  throw new Error("Supabase client missing. Please check supabase-config.js loading order.");
+} else {
+  loginStatus.textContent = "Admin access uses the configured Supabase publishable key.";
 }
 
-checkExistingSession();
-
-loginForm.addEventListener("submit", async (event) => {
+loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  loginStatus.textContent = "Signing in...";
-  loginButton.disabled = true;
-  loginButton.classList.add("is-loading");
-
-  const formData = new FormData(loginForm);
-  const email = String(formData.get("email") || "").trim();
-  const password = String(formData.get("password") || "");
-
-  try {
-    const { data, error } = await loginSupabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) throw error;
-    if (!data.session) throw new Error("Login succeeded but no Supabase session was returned.");
-
-    await loginSupabaseClient.auth.setSession({
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token
-    });
-
-    const {
-      data: { session }
-    } = await loginSupabaseClient.auth.getSession();
-
-    if (!session) {
-      throw new Error("Supabase session was not saved. Please try again.");
-    }
-
-    window.location.href = "admin.html";
-  } catch (error) {
-    loginStatus.textContent = error.message || "Login failed.";
-  } finally {
-    loginButton.disabled = false;
-    loginButton.classList.remove("is-loading");
-  }
+  window.location.href = "admin.html";
 });
-
-async function checkExistingSession() {
-  const { data } = await loginSupabaseClient.auth.getSession();
-
-  if (data.session) {
-    window.location.href = "admin.html";
-  }
-}

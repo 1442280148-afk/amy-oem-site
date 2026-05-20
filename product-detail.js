@@ -10,8 +10,8 @@
 
   try {
     const config = window.XIQI_CONFIG || window.XIQI_SUPABASE;
-    const relatedProductsClient = window.supabaseClient;
-    const { data, error } = await relatedProductsClient
+    const client = window.supabaseClient;
+    const { data, error } = await client
       .from(config.productsTable)
       .select("id,name,category,short_desc,description,image_url,status,sort_order,created_at")
       .eq("status", "published")
