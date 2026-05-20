@@ -1,15 +1,7 @@
-﻿const adminConfig = window.XIQI_CONFIG;
+const client = window.supabaseClient;
 
-if (!adminConfig || !adminConfig.url || !adminConfig.key) {
-  window.XIQI_ADMIN_AUTH_ERROR = "Supabase environment variables are not configured.";
-} else {
-  window.XIQI_ADMIN_CLIENT = supabase.createClient(adminConfig.url, adminConfig.key, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    }
-  });
+if (!client) {
+  window.XIQI_ADMIN_AUTH_ERROR = "Supabase client missing. Please check supabase-config.js loading order.";
 }
 
 window.XIQI_ADMIN_READY = new Promise((resolve, reject) => {
@@ -29,7 +21,6 @@ async function protectAdminPage() {
     throw new Error(window.XIQI_ADMIN_AUTH_ERROR);
   }
 
-  const client = window.XIQI_ADMIN_CLIENT;
   const {
     data: { session },
     error

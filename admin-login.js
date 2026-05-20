@@ -1,21 +1,13 @@
-﻿const loginForm = document.getElementById("loginForm");
+const loginForm = document.getElementById("loginForm");
 const loginStatus = document.getElementById("loginStatus");
 const loginButton = loginForm.querySelector('button[type="submit"]');
-const config = window.XIQI_CONFIG;
+const client = window.supabaseClient;
 
-if (!config || !config.url || !config.key) {
-  loginStatus.textContent = "Supabase environment variables are not configured.";
+if (!client) {
+  loginStatus.textContent = "Supabase client missing. Please check supabase-config.js loading order.";
   loginButton.disabled = true;
-  throw new Error("Supabase environment variables are not configured.");
+  throw new Error("Supabase client missing. Please check supabase-config.js loading order.");
 }
-
-const client = supabase.createClient(config.url, config.key, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
-  }
-});
 
 checkExistingSession();
 

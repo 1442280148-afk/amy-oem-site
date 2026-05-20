@@ -1,5 +1,5 @@
 ﻿const config = window.XIQI_CONFIG;
-const client = window.XIQI_ADMIN_CLIENT;
+const client = window.supabaseClient;
 
 if (!config) {
   showBlockingAdminError("XIQI_CONFIG missing. Please check supabase-config.js loading order.");
@@ -7,8 +7,8 @@ if (!config) {
 }
 
 if (!client) {
-  showBlockingAdminError("Authenticated Supabase client missing. Please check admin-auth.js loading order.");
-  throw new Error("Authenticated Supabase client missing. Please check admin-auth.js loading order.");
+  showBlockingAdminError("Supabase client missing. Please check supabase-config.js loading order.");
+  throw new Error("Supabase client missing. Please check supabase-config.js loading order.");
 }
 
 const form = document.getElementById("productForm");
@@ -1252,3 +1252,4 @@ window.XIQI_ADMIN_READY
   .catch((error) => {
     console.warn(error.message || "Admin authentication failed.");
   });
+
