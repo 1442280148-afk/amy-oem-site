@@ -107,6 +107,7 @@ function renderFeaturedProducts(container, products) {
       const category = cleanText(product.category) || "Mobile Accessories";
       const id = cleanText(String(product.id || ""));
       const link = id ? `product-detail.html?id=${encodeURIComponent(id)}` : `product.html?category=${encodeURIComponent(category)}`;
+      const whatsappLink = buildWhatsappLink(name);
       const visualType = getVisualType(`${category} ${name}`);
 
       return `
@@ -125,6 +126,7 @@ function renderFeaturedProducts(container, products) {
               <span>CUSTOM PACKAGING</span>
             </div>
             <a href="${escapeAttribute(link)}">View Details</a>
+            <a class="whatsapp-mini-cta" href="${escapeAttribute(whatsappLink)}" target="_blank" rel="noopener">WhatsApp Inquiry</a>
           </div>
         </article>
       `;
@@ -132,6 +134,11 @@ function renderFeaturedProducts(container, products) {
     .join("");
 
   if (cards) container.innerHTML = cards;
+}
+
+function buildWhatsappLink(productName) {
+  const message = `Hello, I’m interested in ${productName}.\nPlease send me catalog and quotation.`;
+  return `https://wa.me/8617817004592?text=${encodeURIComponent(message)}`;
 }
 
 function getCategoryIconClass(name) {

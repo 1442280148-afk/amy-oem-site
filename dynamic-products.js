@@ -158,9 +158,15 @@ function renderFilteredProducts() {
         <p>${escapeHtml(product.short_desc || "Factory direct mobile accessories with OEM / ODM wholesale support.")}</p>
         ${renderProductSpecs(product)}
         <a href="product-detail.html?id=${encodeURIComponent(product.id)}">View Details</a>
+        <a class="whatsapp-mini-cta" href="${escapeAttribute(buildWhatsappLink(product.name || "LinfTech Product"))}" target="_blank" rel="noopener">Quick OEM Quote</a>
       </div>
     </div>
   `).join("");
+}
+
+function buildWhatsappLink(productName) {
+  const message = `Hello, I’m interested in ${productName}.\nPlease send me catalog and quotation.`;
+  return `https://wa.me/8617817004592?text=${encodeURIComponent(message)}`;
 }
 
 function renderProductSpecs(product) {
@@ -268,6 +274,7 @@ function renderProductDetail(product) {
   const videoSection = document.querySelector(".product-video-section");
   const productVideo = document.getElementById("productVideo");
   const inquiryButton = document.querySelector(".detail-buttons .btn.primary");
+  const whatsappButton = document.querySelector(".detail-buttons .btn.secondary");
   const ogTitle = `${product.name || "Product Details"} | LinfTech`;
   const ogDescription = product.short_desc || product.description || "LinfTech OEM and wholesale mobile accessories product details.";
   const images = buildGalleryImages(product);
@@ -337,6 +344,12 @@ function renderProductDetail(product) {
 
   if (inquiryButton) {
     inquiryButton.href = `index.html?product=${encodeURIComponent(product.name || "LinfTech Product")}#contact`;
+  }
+
+  if (whatsappButton) {
+    whatsappButton.href = buildWhatsappLink(product.name || "LinfTech Product");
+    whatsappButton.target = "_blank";
+    whatsappButton.rel = "noopener";
   }
 
   if (typeof loadRelatedProducts === "function") {
