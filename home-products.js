@@ -117,6 +117,13 @@ function renderFeaturedProducts(container, products) {
           <div>
             <span>${escapeHtml(category)}</span>
             <h3>${escapeHtml(name)}</h3>
+            <p>${escapeHtml(cleanText(product.short_desc) || getHomeProductDescription(category))}</p>
+            <div class="home-product-specs" aria-label="Wholesale product details">
+              <span>MOQ: 100 PCS</span>
+              <span>OEM</span>
+              <span>5-7 DAYS</span>
+              <span>CUSTOM PACKAGING</span>
+            </div>
             <a href="${escapeAttribute(link)}">View Details</a>
           </div>
         </article>
@@ -137,6 +144,30 @@ function getCategoryIconClass(name) {
   if (normalized.includes("power")) return "power-icon";
 
   return "accessory-icon";
+}
+
+function getHomeProductDescription(category) {
+  const normalized = normalizeCategory(category);
+
+  if (normalized.includes("case")) return "OEM phone case supply for wholesale and online retail projects.";
+  if (normalized.includes("film") || normalized.includes("screen")) return "Hydrogel and screen protector options with fast sampling support.";
+  if (normalized.includes("charger")) return "Fast charging accessories for mixed wholesale orders.";
+  if (normalized.includes("earbud") || normalized.includes("audio")) return "Retail-ready audio accessories with branding support.";
+  if (normalized.includes("power")) return "Portable charging products for distributor sourcing.";
+
+  return "Mobile accessories sourcing with OEM and packaging support.";
+}
+
+function getHomeProductMaterial(category) {
+  const normalized = normalizeCategory(category);
+
+  if (normalized.includes("case")) return "TPU / PC";
+  if (normalized.includes("film") || normalized.includes("screen")) return "Hydrogel Film";
+  if (normalized.includes("charger")) return "ABS / Copper";
+  if (normalized.includes("earbud") || normalized.includes("audio")) return "ABS / Silicone";
+  if (normalized.includes("power")) return "Battery Cell";
+
+  return "Custom Material";
 }
 
 function cleanText(value) {

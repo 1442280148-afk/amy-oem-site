@@ -153,11 +153,53 @@ function renderFilteredProducts() {
     <div class="product-card">
       <img src="${escapeAttribute(product.image_url || "")}" alt="${escapeAttribute(product.name || "LinfTech Product")}" loading="lazy">
       <div class="product-info">
+        <span class="product-category-chip">${escapeHtml(product.category || "Wholesale Accessories")}</span>
         <h3>${escapeHtml(product.name || "LinfTech Product")}</h3>
+        <p>${escapeHtml(product.short_desc || "Factory direct mobile accessories with OEM / ODM wholesale support.")}</p>
+        ${renderProductSpecs(product)}
         <a href="product-detail.html?id=${encodeURIComponent(product.id)}">View Details</a>
       </div>
     </div>
   `).join("");
+}
+
+function renderProductSpecs(product) {
+  const specs = getProductSpecs(product);
+
+  return `
+    <div class="product-specs" aria-label="Wholesale product details">
+      ${specs.map((item) => `
+        <span class="product-spec">
+          <strong>${escapeHtml(item.label)}</strong>
+          ${escapeHtml(item.value)}
+        </span>
+      `).join("")}
+    </div>
+    <div class="product-badges" aria-label="OEM and packaging support">
+      <span>OEM Logo Support</span>
+      <span>Packaging Available</span>
+    </div>
+  `;
+}
+
+function getProductSpecs(product) {
+  return [
+    { label: "MOQ", value: product.moq || "Low MOQ" },
+    { label: "Material", value: product.material || inferMaterial(product) },
+    { label: "Lead Time", value: product.lead_time || product.leadTime || "5-12 Days" }
+  ];
+}
+
+function inferMaterial(product) {
+  const text = `${product.name || ""} ${product.category || ""}`.toLowerCase();
+
+  if (text.includes("case") || text.includes("cover")) return "TPU / PC / Leather";
+  if (text.includes("film") || text.includes("screen")) return "Hydrogel / Tempered Glass";
+  if (text.includes("charger") || text.includes("cable")) return "ABS / Copper";
+  if (text.includes("earbud") || text.includes("audio")) return "ABS / Silicone";
+  if (text.includes("power")) return "ABS / Battery Cell";
+
+  return "Custom Material";
 }
 
 function getProductSearchText(product) {
