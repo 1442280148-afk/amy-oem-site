@@ -1,5 +1,5 @@
 window.SUPABASE_URL = "https://tkbhfsmydyojyttsrxcb.supabase.co";
-window.SUPABASE_ANON_KEY = "PASTE_NEW_SUPABASE_PUBLISHABLE_KEY_HERE";
+window.SUPABASE_ANON_KEY = "sb_publishable_BLMyP5GWgLrALrj9ZODDzg_uDIF6BV_";
 
 if (window.supabase?.createClient) {
   window.supabaseClient = supabase.createClient(
