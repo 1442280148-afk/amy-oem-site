@@ -25,6 +25,7 @@
       <nav class="admin-tabs" aria-label="Admin sections">
         <button class="admin-tab is-active" type="button" data-admin-tab="dashboardTab">Dashboard</button>
         <button class="admin-tab" type="button" data-admin-tab="productsTab">Products</button>
+        <button class="admin-tab" type="button" data-admin-tab="productImportV4Tab">Product Studio V4</button>
         <button class="admin-tab" type="button" data-admin-tab="categoriesTab">Categories</button>
         <button class="admin-tab" type="button" data-admin-tab="factoryTab">Factory Videos</button>
         <button class="admin-tab" type="button" data-admin-tab="inquiriesTab">Inquiries</button>
@@ -242,6 +243,123 @@
       </section>
     </section>
 
+
+    <section id="productImportV4Tab" class="admin-tab-panel" hidden>
+      <div class="section-title">
+        <div>
+          <p>Product Studio V4</p>
+          <h2>Local 1688 collection and publishing</h2>
+        </div>
+        <button id="resetImportV4" class="soft-button" type="button">Reset Import</button>
+      </div>
+
+      <section class="admin-panel editor-panel">
+        <form id="productImportV4Form" class="product-form">
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Collect From 1688</p>
+              <span>Calls the local LINF Collector API on this computer. The website server never crawls 1688.</span>
+            </div>
+            <div class="collector-row">
+              <label>
+                1688 Product Link
+                <input type="url" id="collectorUrl" placeholder="https://detail.1688.com/offer/...">
+              </label>
+              <button id="collectFrom1688" class="primary-button" type="button">Collect From 1688</button>
+            </div>
+            <div id="collectorStatus" class="status-callout">Please start LINF Collector API on your computer first.</div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Manual Fallback Import</p>
+              <span>Keep using product.json and local images when the collector service is unavailable.</span>
+            </div>
+            <div class="form-grid media-grid">
+              <label>
+                Product JSON upload
+                <input type="file" id="productJsonFile" accept="application/json,.json">
+              </label>
+              <label>
+                Product Images upload
+                <input type="file" id="productImportImages" accept="image/*" multiple>
+              </label>
+            </div>
+            <div id="productImportJsonStatus" class="status-callout">No JSON loaded yet.</div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Product Form</p>
+              <span>Fields are prefilled from collection results or JSON and can be edited before saving.</span>
+            </div>
+            <label>
+              Chinese Title
+              <input type="text" name="chinese_title" placeholder="Original 1688 title" readonly>
+            </label>
+            <div class="form-grid">
+              <label>
+                English Title
+                <input type="text" name="english_title" required placeholder="OEM Magnetic Phone Case">
+              </label>
+              <label>
+                Category
+                <input type="text" name="category" placeholder="Phone Cases">
+              </label>
+              <label>
+                SEO Keywords
+                <input type="text" name="seo_keywords" placeholder="OEM phone case, wholesale mobile accessories">
+              </label>
+              <label>
+                Source URL
+                <input type="url" name="source_url" placeholder="https://detail.1688.com/...">
+              </label>
+            </div>
+            <label>
+              Description
+              <textarea name="description" rows="6" placeholder="English product description for the website."></textarea>
+            </label>
+            <div class="form-grid">
+              <label>
+                OEM Logo
+                <input type="text" name="oem_logo" value="Available">
+              </label>
+              <label>
+                Custom Packaging
+                <input type="text" name="custom_packaging" value="Available">
+              </label>
+              <label>
+                Sample Order
+                <input type="text" name="sample_order" value="Supported">
+              </label>
+              <label>
+                MOQ
+                <input type="text" name="moq" value="Contact us for MOQ">
+              </label>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-heading">
+              <p>Image Preview</p>
+              <span>Images upload to Supabase Storage bucket product-images, then public URLs are saved to products.images.</span>
+            </div>
+            <div id="productImportImagePreview" class="import-image-preview">
+              <div class="empty-state">
+                <h3>No images selected</h3>
+                <p>Choose one or more product images before saving or publishing.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions sticky-actions">
+            <button id="saveImportDraft" class="soft-button" type="button">Save as Draft</button>
+            <button id="publishImportProduct" class="primary-button" type="button">Publish Product</button>
+            <span id="productImportStatus" class="status-text"></span>
+          </div>
+        </form>
+      </section>
+    </section>
     <section id="categoriesTab" class="admin-tab-panel" hidden>
       <div class="section-title">
         <div>
@@ -390,6 +508,7 @@
   <script src="admin.js"></script>
 </body>
 </html>
+
 
 
 

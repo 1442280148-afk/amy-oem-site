@@ -33,6 +33,43 @@ alter table products add column if not exists packaging text;
 alter table products add column if not exists lead_time text;
 alter table products add column if not exists features text;
 
+
+-- Product Import V4 columns for local 1688 export -> admin import -> website publish.
+alter table products add column if not exists title text;
+alter table products add column if not exists seo_keywords text;
+alter table products add column if not exists source_url text;
+alter table products add column if not exists images jsonb default '[]'::jsonb;
+alter table products add column if not exists status text default 'draft';
+alter table products add column if not exists oem_logo text default 'Available';
+alter table products add column if not exists custom_packaging text default 'Available';
+alter table products add column if not exists sample_order text default 'Supported';
+alter table products add column if not exists moq text default 'Contact us for MOQ';
+
+update products
+set title = coalesce(nullif(title, ''), name)
+where title is null or title = '';
+
+update products
+set images = to_jsonb(coalesce(gallery, array[image_url]::text[]))
+where images is null or images = '[]'::jsonb;
+
+insert into storage.buckets (id, name, public)
+values ('product-images', 'product-images', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "Public can read imported product images" on storage.objects;
+create policy "Public can read imported product images"
+on storage.objects for select
+using (bucket_id = 'product-images');
+
+drop policy if exists "Admin can upload imported product images" on storage.objects;
+create policy "Admin can upload imported product images"
+on storage.objects for insert
+with check (bucket_id = 'product-images');
+
+-- Production hardening note:
+-- Replace public write policies with authenticated admin-only policies before launch.
+-- The V4 UI never crawls 1688; it only imports local product.json exports and local image files.
 create index if not exists products_status_sort_idx
 on products (status, sort_order, created_at desc);
 
@@ -269,6 +306,7 @@ on storage.objects for delete
 using (bucket_id = 'products');
 
 notify pgrst, 'reload schema';
+
 
 
 

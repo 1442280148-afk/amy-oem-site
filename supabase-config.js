@@ -1,4 +1,4 @@
-window.SUPABASE_URL = "https://tkbhfsmydyojyttsrxcb.supabase.co";
+﻿window.SUPABASE_URL = "https://tkbhfsmydyojyttsrxcb.supabase.co";
 window.SUPABASE_ANON_KEY = "sb_publishable_BLMyP5GWgLrALrj9ZODDzg_uDIF6BV_";
 
 if (window.supabase?.createClient) {
@@ -22,7 +22,9 @@ window.XIQI_CONFIG = {
   url: window.SUPABASE_URL,
   key: window.SUPABASE_ANON_KEY,
   productsTable: "products",
-  storageBucket: "products"
+  storageBucket: "products",
+  productImportBucket: "product-images"
 };
 
 window.XIQI_SUPABASE = window.XIQI_CONFIG;
+
