@@ -108,25 +108,19 @@ function renderFeaturedProducts(container, products) {
       const id = cleanText(String(product.id || ""));
       const link = id ? `product-detail.html?id=${encodeURIComponent(id)}` : `product.html?category=${encodeURIComponent(category)}`;
       const whatsappLink = buildWhatsappLink(name);
-      const visualType = getVisualType(`${category} ${name}`);
+      const imageUrl = cleanText(product.image_url) || getFallbackProductImage(`${category} ${name}`);
 
       return `
         <article class="home-product-card">
-          <div class="product-visual product-visual-${visualType}">
-            <div class="visual-device ${getVisualDeviceClass(visualType)}"></div>
+          <div class="product-visual">
+            <img src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(name)}" loading="lazy">
           </div>
-          <div>
-            <span>${escapeHtml(category)}</span>
+          <div class="home-product-content">
             <h3>${escapeHtml(name)}</h3>
-            <p>${escapeHtml(cleanText(product.short_desc) || getHomeProductDescription(category))}</p>
-            <div class="home-product-specs" aria-label="Wholesale product details">
-              <span>MOQ: 100 PCS</span>
-              <span>OEM</span>
-              <span>5-7 DAYS</span>
-              <span>CUSTOM PACKAGING</span>
+            <div class="home-product-actions">
+              <a class="home-details-button" href="${escapeAttribute(link)}">View Details</a>
+              <a class="whatsapp-mini-cta" href="${escapeAttribute(whatsappLink)}" target="_blank" rel="noopener">Quick Inquiry</a>
             </div>
-            <a href="${escapeAttribute(link)}">View Details</a>
-            <a class="whatsapp-mini-cta" href="${escapeAttribute(whatsappLink)}" target="_blank" rel="noopener">WhatsApp Inquiry</a>
           </div>
         </article>
       `;
@@ -136,9 +130,8 @@ function renderFeaturedProducts(container, products) {
   if (cards) container.innerHTML = cards;
 }
 
-function buildWhatsappLink(productName) {
-  const message = `Hello, I’m interested in ${productName}.\nPlease send me catalog and quotation.`;
-  return `https://wa.me/8617817004592?text=${encodeURIComponent(message)}`;
+function buildWhatsappLink() {
+  return "https://wa.me/8619978036095";
 }
 
 function getCategoryIconClass(name) {
@@ -258,6 +251,10 @@ function mergeCategoryFallbacks(categories) {
   });
 
   return merged;
+}
+
+function getFallbackProductImage(value) {
+  return getFallbackCategoryImage(value);
 }
 
 function mergeProductFallbacks(products) {

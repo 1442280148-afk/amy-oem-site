@@ -29,19 +29,18 @@
     setStatus(status, "Sending your inquiry...", "");
 
     const data = {
-      name: clean(form.name.value),
-      email: clean(form.email.value),
-      whatsapp: clean(form.whatsapp.value),
-      product: clean(form.product.value),
-      message: clean(form.message.value)
+      name: fieldValue(form, "name"),
+      company: fieldValue(form, "company"),
+      country: fieldValue(form, "country"),
+      email: fieldValue(form, "email"),
+      whatsapp: fieldValue(form, "whatsapp"),
+      product: fieldValue(form, "product"),
+      quantity: fieldValue(form, "quantity"),
+      message: fieldValue(form, "message")
     };
 
     try {
-      const { error } = await client
-        .from("inquiries")
-        .insert([data]);
-
-      if (error) throw error;
+      await saveInquiry(client, data);
 
       form.reset();
 
@@ -85,6 +84,34 @@ function setStatus(status, message, type) {
 
 function clean(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function fieldValue(form, name) {
+  return form.elements[name] ? clean(form.elements[name].value) : "";
+}
+
+async function saveInquiry(client, data) {
+  const { error } = await client
+    .from("inquiries")
+    .insert([data]);
+
+  if (!error) return;
+
+  const legacyColumns = [
+    "name",
+    "email",
+    "whatsapp",
+    "product",
+    "message"
+  ];
+  const legacyData = Object.fromEntries(
+    legacyColumns.map((key) => [key, data[key]])
+  );
+  const fallback = await client
+    .from("inquiries")
+    .insert([legacyData]);
+
+  if (fallback.error) throw error;
 }
 
 async function sendInquiryEmail(data) {

@@ -138,15 +138,21 @@ using (bucket_id = 'products');
 create table if not exists inquiries (
   id uuid primary key default gen_random_uuid(),
   name text,
+  company text,
+  country text,
   email text,
   whatsapp text,
   product text,
+  quantity text,
   message text,
   status text not null default 'new',
   created_at timestamptz not null default now()
 );
 
 alter table inquiries add column if not exists status text not null default 'new';
+alter table inquiries add column if not exists company text;
+alter table inquiries add column if not exists country text;
+alter table inquiries add column if not exists quantity text;
 alter table inquiries alter column status set default 'new';
 update inquiries set status = lower(status) where status is not null;
 

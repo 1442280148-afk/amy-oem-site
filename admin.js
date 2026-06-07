@@ -1251,7 +1251,7 @@ async function loadInquiries() {
   try {
     const { data, error } = await client
       .from("inquiries")
-      .select("id,name,email,whatsapp,product,message,status,created_at")
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -1286,19 +1286,22 @@ function renderInquiries(inquiries) {
           </div>
           <div class="inquiry-meta">
             <p><strong>Email:</strong> ${escapeHtml(inquiry.email || "-")}</p>
+            <p><strong>Company:</strong> ${escapeHtml(inquiry.company || "-")}</p>
+            <p><strong>Country:</strong> ${escapeHtml(inquiry.country || "-")}</p>
             <p><strong>WhatsApp:</strong> ${escapeHtml(inquiry.whatsapp || "-")}</p>
             <p><strong>Interested Product:</strong> ${escapeHtml(inquiry.product || "-")}</p>
+            <p><strong>Quantity:</strong> ${escapeHtml(inquiry.quantity || "-")}</p>
             <p><strong>Submitted:</strong> ${escapeHtml(formatDate(inquiry.created_at))}</p>
           </div>
           <div class="inquiry-detail" hidden>
             <div class="inquiry-detail-grid">
               <div class="detail-block">
                 <strong>Customer Info</strong>
-                <p>${escapeHtml(inquiry.name || "-")}<br>${escapeHtml(inquiry.email || "-")}<br>${escapeHtml(inquiry.whatsapp || "-")}</p>
+                <p>${escapeHtml(inquiry.name || "-")}<br>${escapeHtml(inquiry.company || "-")}<br>${escapeHtml(inquiry.country || "-")}<br>${escapeHtml(inquiry.email || "-")}<br>${escapeHtml(inquiry.whatsapp || "-")}</p>
               </div>
               <div class="detail-block">
                 <strong>Interested Product</strong>
-                <p>${escapeHtml(inquiry.product || "-")}<br>${escapeHtml(formatDate(inquiry.created_at))}</p>
+                <p>${escapeHtml(inquiry.product || "-")}<br>${escapeHtml(inquiry.quantity || "-")}<br>${escapeHtml(formatDate(inquiry.created_at))}</p>
               </div>
             </div>
             <div class="detail-block">

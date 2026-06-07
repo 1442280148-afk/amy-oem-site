@@ -13,7 +13,7 @@
     const client = window.supabaseClient;
     const { data, error } = await client
       .from(config.productsTable)
-      .select("id,name,category,short_desc,description,image_url,status,sort_order,created_at")
+      .select("id,title,name,category,short_desc,description,images,image_url,status,sort_order,created_at")
       .eq("status", "published")
       .eq("category", currentProduct.category)
       .neq("id", currentProduct.id)
@@ -38,11 +38,16 @@ function renderRelatedProducts(container, products) {
 
   container.innerHTML = products.map((product) => `
     <a href="product-detail.html?id=${encodeURIComponent(product.id)}" class="related-card">
-      <img src="${escapeRelatedAttribute(product.image_url || "logo.png")}" alt="${escapeRelatedAttribute(product.name || "LinfTech Product")}" loading="lazy">
-      <h3>${escapeRelatedHtml(product.name || "LinfTech Product")}</h3>
+      <img src="${escapeRelatedAttribute(getRelatedProductImage(product))}" alt="${escapeRelatedAttribute(product.title || product.name || "LinfTech Product")}" loading="lazy">
+      <h3>${escapeRelatedHtml(product.title || product.name || "LinfTech Product")}</h3>
       <p>${escapeRelatedHtml(product.short_desc || product.description || product.category || "")}</p>
     </a>
   `).join("");
+}
+
+function getRelatedProductImage(product) {
+  const images = Array.isArray(product.images) ? product.images : [];
+  return images.find(Boolean) || product.image_url || "logo.png";
 }
 
 function escapeRelatedHtml(value) {

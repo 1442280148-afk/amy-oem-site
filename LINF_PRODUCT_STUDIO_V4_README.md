@@ -40,6 +40,20 @@ browser window. The collector does not bypass login, captcha, or risk controls.
 
 Manual `product.json` and local image upload remain available as a fallback.
 
+## Vercel Gmail SMTP
+
+Set these Environment Variables in Vercel before deploying:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=your-gmail-address@gmail.com
+SMTP_PASS=your-gmail-app-password
+SMTP_TO=amyfeng0713@gmail.com
+```
+
+Use a Gmail App Password for `SMTP_PASS`. Do not commit SMTP passwords into code.
+
 ## Supabase
 
 Run `backend/supabase-schema.sql` or `../product-import-v4-migration.sql` in the

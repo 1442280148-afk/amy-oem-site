@@ -11,11 +11,11 @@ module.exports = async function handler(req, res) {
 
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
-  const notifyTo = process.env.SMTP_TO || smtpUser;
+  const notifyTo = process.env.SMTP_TO;
 
-  if (!smtpUser || !smtpPass) {
+  if (!smtpUser || !smtpPass || !notifyTo) {
     console.error("SMTP environment variables missing.");
-    res.status(500).json({ error: "SMTP environment variables are not configured." });
+    res.status(500).json({ error: "SMTP_USER, SMTP_PASS and SMTP_TO environment variables are required." });
     return;
   }
 
@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.163.com",
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: Number(process.env.SMTP_PORT || 465),
       secure: true,
       auth: {
@@ -38,7 +38,8 @@ module.exports = async function handler(req, res) {
     await transporter.sendMail({
       from: `"LinfTech Website" <${smtpUser}>`,
       to: notifyTo,
-      subject: `New Inquiry - ${safeText(inquiry.product) || "LinfTech Website"}`,
+      replyTo: safeText(inquiry.email) || undefined,
+      subject: "[LINFTECH Inquiry] New Product Inquiry",
       text: buildTextEmail(inquiry, submittedAt),
       html: buildHtmlEmail(inquiry, submittedAt)
     });
@@ -56,9 +57,12 @@ function buildTextEmail(inquiry, submittedAt) {
     "New inquiry from LinfTech website",
     "",
     `Name: ${safeText(inquiry.name)}`,
+    `Company: ${safeText(inquiry.company)}`,
+    `Country: ${safeText(inquiry.country)}`,
     `Email: ${safeText(inquiry.email)}`,
     `WhatsApp: ${safeText(inquiry.whatsapp)}`,
     `Product: ${safeText(inquiry.product)}`,
+    `Quantity: ${safeText(inquiry.quantity)}`,
     `Time: ${submittedAt}`,
     "",
     "Message:",
@@ -71,9 +75,12 @@ function buildHtmlEmail(inquiry, submittedAt) {
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
       <h2>New inquiry from LinfTech website</h2>
       <p><strong>Name:</strong> ${escapeHtml(inquiry.name)}</p>
+      <p><strong>Company:</strong> ${escapeHtml(inquiry.company)}</p>
+      <p><strong>Country:</strong> ${escapeHtml(inquiry.country)}</p>
       <p><strong>Email:</strong> ${escapeHtml(inquiry.email)}</p>
       <p><strong>WhatsApp:</strong> ${escapeHtml(inquiry.whatsapp)}</p>
       <p><strong>Product:</strong> ${escapeHtml(inquiry.product)}</p>
+      <p><strong>Quantity:</strong> ${escapeHtml(inquiry.quantity)}</p>
       <p><strong>Time:</strong> ${escapeHtml(submittedAt)}</p>
       <p><strong>Message:</strong></p>
       <div style="padding:12px 14px;background:#f8fbff;border:1px solid #dbeafe;border-radius:8px">

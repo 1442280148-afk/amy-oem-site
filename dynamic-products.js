@@ -151,61 +151,26 @@ function renderFilteredProducts() {
 
   grid.innerHTML = filteredProducts.map((product) => `
     <div class="product-card">
-      <img src="${escapeAttribute(product.image_url || "")}" alt="${escapeAttribute(product.name || "LinfTech Product")}" loading="lazy">
+      <img src="${escapeAttribute(getProductCardImage(product))}" alt="${escapeAttribute(product.title || product.name || "LinfTech Product")}" loading="lazy">
       <div class="product-info">
         <span class="product-category-chip">${escapeHtml(product.category || "Wholesale Accessories")}</span>
-        <h3>${escapeHtml(product.name || "LinfTech Product")}</h3>
-        <p>${escapeHtml(product.short_desc || "Factory direct mobile accessories with OEM / ODM wholesale support.")}</p>
-        ${renderProductSpecs(product)}
-        <a href="product-detail.html?id=${encodeURIComponent(product.id)}">View Details</a>
-        <a class="whatsapp-mini-cta" href="${escapeAttribute(buildWhatsappLink(product.name || "LinfTech Product"))}" target="_blank" rel="noopener">Quick OEM Quote</a>
+        <h3>${escapeHtml(product.title || product.name || "LinfTech Product")}</h3>
+        <div class="product-card-actions">
+          <a class="product-details-button" href="product-detail.html?id=${encodeURIComponent(product.id)}">View Details</a>
+          <a class="product-inquiry-button" href="${escapeAttribute(buildWhatsappLink(product.title || product.name || "LinfTech Product"))}" target="_blank" rel="noopener">Quick Inquiry</a>
+        </div>
       </div>
     </div>
   `).join("");
 }
 
-function buildWhatsappLink(productName) {
-  const message = `Hello, I’m interested in ${productName}.\nPlease send me catalog and quotation.`;
-  return `https://wa.me/8617817004592?text=${encodeURIComponent(message)}`;
+function getProductCardImage(product) {
+  const images = normalizeGallery(product.images);
+  return images.find(Boolean) || product.image_url || "logo.png";
 }
 
-function renderProductSpecs(product) {
-  const specs = getProductSpecs(product);
-
-  return `
-    <div class="product-specs" aria-label="Wholesale product details">
-      ${specs.map((item) => `
-        <span class="product-spec">
-          <strong>${escapeHtml(item.label)}</strong>
-          ${escapeHtml(item.value)}
-        </span>
-      `).join("")}
-    </div>
-    <div class="product-badges" aria-label="OEM and packaging support">
-      <span>OEM Logo Support</span>
-      <span>Packaging Available</span>
-    </div>
-  `;
-}
-
-function getProductSpecs(product) {
-  return [
-    { label: "MOQ", value: product.moq || "Low MOQ" },
-    { label: "Material", value: product.material || inferMaterial(product) },
-    { label: "Lead Time", value: product.lead_time || product.leadTime || "5-12 Days" }
-  ];
-}
-
-function inferMaterial(product) {
-  const text = `${product.name || ""} ${product.category || ""}`.toLowerCase();
-
-  if (text.includes("case") || text.includes("cover")) return "TPU / PC / Leather";
-  if (text.includes("film") || text.includes("screen")) return "Hydrogel / Tempered Glass";
-  if (text.includes("charger") || text.includes("cable")) return "ABS / Copper";
-  if (text.includes("earbud") || text.includes("audio")) return "ABS / Silicone";
-  if (text.includes("power")) return "ABS / Battery Cell";
-
-  return "Custom Material";
+function buildWhatsappLink() {
+  return "https://wa.me/8619978036095";
 }
 
 function getProductSearchText(product) {
@@ -275,18 +240,21 @@ function renderProductDetail(product) {
   const productVideo = document.getElementById("productVideo");
   const inquiryButton = document.querySelector(".detail-buttons .btn.primary");
   const whatsappButton = document.querySelector(".detail-buttons .btn.secondary");
-  const ogTitle = `${product.name || "Product Details"} | LinfTech`;
+  const displayName = product.title || product.name || "LinfTech Product";
+  const ogTitle = `${displayName || "Product Details"} | LinfTech`;
   const ogDescription = product.short_desc || product.description || "LinfTech OEM and wholesale mobile accessories product details.";
   const images = buildGalleryImages(product);
 
-  if (mainImage && images.length) {
-    mainImage.src = images[0];
-    updateMeta("property", "og:image", images[0]);
+  if (mainImage) {
+    const firstImage = images[0] || product.image_url || "logo.png";
+    mainImage.src = firstImage;
+    mainImage.alt = displayName;
+    updateMeta("property", "og:image", firstImage);
   }
 
-  if (gallery && images.length) {
+  if (gallery) {
     gallery.innerHTML = images.map((image) => `
-      <img src="${escapeAttribute(image)}" alt="">
+      <img src="${escapeAttribute(image)}" alt="${escapeAttribute(displayName)}" loading="lazy">
     `).join("");
     setupGalleryControls(images);
   }
@@ -296,7 +264,7 @@ function renderProductDetail(product) {
   }
 
   if (title) {
-    title.textContent = product.name || "LinfTech Product";
+    title.textContent = displayName;
   }
 
   if (desc) {
@@ -343,11 +311,11 @@ function renderProductDetail(product) {
   }
 
   if (inquiryButton) {
-    inquiryButton.href = `index.html?product=${encodeURIComponent(product.name || "LinfTech Product")}#contact`;
+    inquiryButton.href = `index.html?product=${encodeURIComponent(displayName)}#contact`;
   }
 
   if (whatsappButton) {
-    whatsappButton.href = buildWhatsappLink(product.name || "LinfTech Product");
+    whatsappButton.href = buildWhatsappLink(displayName);
     whatsappButton.target = "_blank";
     whatsappButton.rel = "noopener";
   }
@@ -363,7 +331,9 @@ function renderProductDetail(product) {
 }
 
 function buildGalleryImages(product) {
-  const images = [product.image_url]
+  const images = []
+    .concat(normalizeGallery(product.images))
+    .concat(product.image_url || [])
     .concat(normalizeGallery(product.gallery))
     .filter(Boolean);
 
@@ -389,7 +359,7 @@ function setupGalleryControls(images) {
   const mainImage = document.querySelector(".detail-main-image img");
   const gallery = document.querySelector(".detail-gallery");
 
-  if (!mainImage || !gallery) return;
+  if (!mainImage || !gallery || !images.length) return;
 
   let activeIndex = 0;
   let touchStartX = 0;
