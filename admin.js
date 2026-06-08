@@ -41,6 +41,7 @@ const productImportV4Form = document.getElementById("productImportV4Form");
 const productJsonFileInput = document.getElementById("productJsonFile");
 const productImportImagesInput = document.getElementById("productImportImages");
 const productImportImagePreview = document.getElementById("productImportImagePreview");
+const productImportDetailImagePreview = document.getElementById("productImportDetailImagePreview");
 const productImportJsonStatus = document.getElementById("productImportJsonStatus");
 const productImportStatus = document.getElementById("productImportStatus");
 const saveImportDraftButton = document.getElementById("saveImportDraft");
@@ -58,6 +59,7 @@ let inquiriesCache = [];
 let categorySlugTouched = false;
 let toastTimer = null;
 let importedBase64Images = [];
+let importedDetailBase64Images = [];
 let selectedManualImportImages = [];
 
 setupTabs();
@@ -336,8 +338,10 @@ async function collectProductFrom1688() {
     prefillProductImportV4(payload);
     selectedManualImportImages = [];
     importedBase64Images = normalizeCollectedImages(payload.images);
+    importedDetailBase64Images = normalizeCollectedImages(payload.detail_images);
     renderProductImportImagePreview();
-    setCollectorStatus(`Collection complete. ${importedBase64Images.length} images ready for upload.`);
+    renderProductImportDetailImagePreview();
+    setCollectorStatus(`Collection complete. ${importedBase64Images.length} main images and ${importedDetailBase64Images.length} detail images ready for upload.`);
     setProductImportStatus("Product draft generated. Review and publish when ready.");
   } catch (error) {
     const message = /Failed to fetch|NetworkError|Load failed/i.test(error.message || "")
@@ -387,6 +391,9 @@ function prefillProductImportV4(productJson) {
     importedBase64Images = jsonImages;
     renderProductImportImagePreview();
   }
+
+  importedDetailBase64Images = normalizeCollectedImages(productJson.detail_images);
+  renderProductImportDetailImagePreview();
 }
 
 function pickImportValue(source, keys) {
@@ -453,6 +460,34 @@ function bindProductImportImageDeleteButtons() {
   });
 }
 
+function renderProductImportDetailImagePreview() {
+  if (!productImportDetailImagePreview) return;
+
+  if (!importedDetailBase64Images.length) {
+    productImportDetailImagePreview.innerHTML = renderEmptyState("No detail images collected", "Products can still publish without detail images.");
+    return;
+  }
+
+  productImportDetailImagePreview.innerHTML = importedDetailBase64Images.map((image, index) => `
+    <article class="import-preview-item detail-import-preview-item">
+      <img src="${escapeAttribute(base64ImageToDataUrl(image))}" alt="${escapeAttribute(image.filename)}">
+      <div>
+        <strong>${escapeHtml(image.filename)}</strong>
+        <span>Collected detail image</span>
+      </div>
+      <button class="danger-soft import-delete-button" type="button" data-index="${index}">Delete Image</button>
+    </article>
+  `).join("");
+
+  productImportDetailImagePreview.querySelectorAll("[data-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      importedDetailBase64Images.splice(Number(button.dataset.index), 1);
+      renderProductImportDetailImagePreview();
+      setProductImportStatus("Detail image removed from this Product Studio draft.");
+    });
+  });
+}
+
 function deleteProductImportImage(source, index) {
   if (source === "collected") {
     importedBase64Images.splice(index, 1);
@@ -476,7 +511,8 @@ async function saveProductImportV4(status) {
     await ensureAdminSession();
     const formData = new FormData(productImportV4Form);
     const imageUrls = await uploadProductImportImages();
-    const savedProduct = await insertImportedProduct(formData, imageUrls, status);
+    const detailImageUrls = await uploadProductImportDetailImages();
+    const savedProduct = await insertImportedProduct(formData, imageUrls, detailImageUrls, status);
     resetProductImportV4();
     const message = status === "published" ? "Product published successfully." : "Draft saved successfully.";
     setProductImportStatus(message);
@@ -491,6 +527,11 @@ async function saveProductImportV4(status) {
     setButtonBusy(saveImportDraftButton, false);
     setButtonBusy(publishImportProductButton, false);
   }
+}
+
+async function uploadProductImportDetailImages() {
+  if (!importedDetailBase64Images.length) return [];
+  return uploadCollectedBase64Images(importedDetailBase64Images);
 }
 
 async function uploadProductImportImages() {
@@ -542,7 +583,7 @@ async function uploadCollectedBase64Images(images) {
   return urls;
 }
 
-async function insertImportedProduct(formData, imageUrls, status) {
+async function insertImportedProduct(formData, imageUrls, detailImageUrls, status) {
   const config = getAdminConfig();
   const title = clean(formData.get("english_title"));
   if (!title) throw new Error("English Title is required.");
@@ -555,6 +596,7 @@ async function insertImportedProduct(formData, imageUrls, status) {
     seo_keywords: clean(formData.get("seo_keywords")),
     source_url: clean(formData.get("source_url")),
     images: imageUrls,
+    detail_images: detailImageUrls,
     image_url: imageUrls[0],
     gallery: imageUrls,
     status,
@@ -583,6 +625,7 @@ function buildImportErrorMessage(error) {
 function resetProductImportV4() {
   productImportV4Form?.reset();
   importedBase64Images = [];
+  importedDetailBase64Images = [];
   selectedManualImportImages = [];
   if (productImportV4Form?.elements) {
     if (productImportV4Form.elements.chinese_title) productImportV4Form.elements.chinese_title.value = "";
@@ -594,6 +637,7 @@ function resetProductImportV4() {
   if (productImportJsonStatus) productImportJsonStatus.textContent = "No JSON loaded yet.";
   setCollectorStatus("Please start LINF Collector API on your computer first.");
   if (productImportImagePreview) productImportImagePreview.innerHTML = renderEmptyState("No images selected", "Choose one or more product images before saving or publishing.");
+  if (productImportDetailImagePreview) productImportDetailImagePreview.innerHTML = renderEmptyState("No detail images collected", "Products can still publish without detail images.");
   setProductImportStatus("");
 }
 

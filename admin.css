@@ -1223,6 +1223,12 @@ input[type="checkbox"]:checked::after {
   border: 1px solid rgba(148, 163, 184, .14);
 }
 
+.detail-import-preview .import-preview-item img {
+  aspect-ratio: 1 / 1.35;
+  object-fit: contain;
+  background: rgba(15, 23, 42, .45);
+}
+
 .import-preview-item strong,
 .import-preview-item span {
   display: block;

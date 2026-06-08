@@ -238,6 +238,8 @@ function renderProductDetail(product) {
   const info = document.querySelector(".detail-info");
   const videoSection = document.querySelector(".product-video-section");
   const productVideo = document.getElementById("productVideo");
+  const detailImagesSection = document.querySelector(".product-detail-images-section");
+  const detailImagesContainer = document.getElementById("productDetailImages");
   const inquiryButton = document.querySelector(".detail-buttons .btn.primary");
   const whatsappButton = document.querySelector(".detail-buttons .btn.secondary");
   const displayName = product.title || product.name || "LinfTech Product";
@@ -310,6 +312,8 @@ function renderProductDetail(product) {
     videoSection.hidden = true;
   }
 
+  renderProductDetailImages(product, detailImagesSection, detailImagesContainer, displayName);
+
   if (inquiryButton) {
     inquiryButton.href = `index.html?product=${encodeURIComponent(displayName)}#contact`;
   }
@@ -338,6 +342,23 @@ function buildGalleryImages(product) {
     .filter(Boolean);
 
   return [...new Set(images)];
+}
+
+function renderProductDetailImages(product, section, container, displayName) {
+  if (!section || !container) return;
+
+  const detailImages = normalizeGallery(product.detail_images);
+
+  if (!detailImages.length) {
+    section.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = detailImages.map((image, index) => `
+    <img src="${escapeAttribute(image)}" alt="${escapeAttribute(`${displayName} detail ${index + 1}`)}" loading="lazy">
+  `).join("");
+  section.hidden = false;
 }
 
 function normalizeGallery(value) {

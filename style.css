@@ -8649,6 +8649,29 @@ body.rtl .nav.active{
   object-fit:contain !important;
 }
 
+.product-detail-images-section{
+  padding:70px 7% !important;
+  background:#fff !important;
+}
+
+.product-detail-images{
+  display:grid !important;
+  gap:18px !important;
+  max-width:980px !important;
+  margin:0 auto !important;
+}
+
+.product-detail-images img{
+  display:block !important;
+  width:100% !important;
+  height:auto !important;
+  max-width:100% !important;
+  object-fit:contain !important;
+  background:#f5f7fb !important;
+  border-radius:14px !important;
+  border:1px solid rgba(226,232,240,.9) !important;
+}
+
 .product-card img{
   aspect-ratio:1 / 1;
   object-fit:cover !important;
@@ -8680,6 +8703,18 @@ body.rtl .nav.active{
   .brand-featured-section .brand-product-wall .home-product-card a.whatsapp-mini-cta{
     min-height:32px !important;
     font-size:11px !important;
+  }
+
+  .product-detail-images-section{
+    padding:46px 18px !important;
+  }
+
+  .product-detail-images{
+    gap:12px !important;
+  }
+
+  .product-detail-images img{
+    border-radius:10px !important;
   }
 }
 

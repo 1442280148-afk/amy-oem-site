@@ -39,6 +39,7 @@ alter table products add column if not exists title text;
 alter table products add column if not exists seo_keywords text;
 alter table products add column if not exists source_url text;
 alter table products add column if not exists images jsonb default '[]'::jsonb;
+alter table products add column if not exists detail_images jsonb default '[]'::jsonb;
 alter table products add column if not exists status text default 'draft';
 alter table products add column if not exists oem_logo text default 'Available';
 alter table products add column if not exists custom_packaging text default 'Available';
