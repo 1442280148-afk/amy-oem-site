@@ -40,6 +40,8 @@ const refreshDashboardButton = document.getElementById("refreshDashboard");
 const productImportV4Form = document.getElementById("productImportV4Form");
 const productJsonFileInput = document.getElementById("productJsonFile");
 const productImportImagesInput = document.getElementById("productImportImages");
+const productImportAppendImagesInput = document.getElementById("productImportAppendImages");
+const productImportDetailImagesInput = document.getElementById("productImportDetailImages");
 const productImportImagePreview = document.getElementById("productImportImagePreview");
 const productImportDetailImagePreview = document.getElementById("productImportDetailImagePreview");
 const productImportJsonStatus = document.getElementById("productImportJsonStatus");
@@ -58,9 +60,8 @@ let factoryVideosCache = [];
 let inquiriesCache = [];
 let categorySlugTouched = false;
 let toastTimer = null;
-let importedBase64Images = [];
-let importedDetailBase64Images = [];
-let selectedManualImportImages = [];
+let mainImportImages = [];
+let detailImportImages = [];
 
 setupTabs();
 setupCategorySlugSuggestion();
@@ -294,6 +295,8 @@ function setupProductImportV4() {
 
   productJsonFileInput?.addEventListener("change", handleProductJsonUpload);
   productImportImagesInput?.addEventListener("change", handleManualImportImages);
+  productImportAppendImagesInput?.addEventListener("change", () => handleAppendImportImages("main", productImportAppendImagesInput));
+  productImportDetailImagesInput?.addEventListener("change", () => handleAppendImportImages("detail", productImportDetailImagesInput));
   collectFrom1688Button?.addEventListener("click", collectProductFrom1688);
   saveImportDraftButton?.addEventListener("click", () => saveProductImportV4("draft"));
   publishImportProductButton?.addEventListener("click", () => saveProductImportV4("published"));
@@ -301,9 +304,24 @@ function setupProductImportV4() {
 }
 
 function handleManualImportImages() {
-  importedBase64Images = [];
-  selectedManualImportImages = Array.from(productImportImagesInput?.files || []);
+  mainImportImages = filesToImportItems(Array.from(productImportImagesInput?.files || []), "Product image");
   renderProductImportImagePreview();
+}
+
+function handleAppendImportImages(target, input) {
+  const items = filesToImportItems(Array.from(input?.files || []), target === "detail" ? "Manual detail image" : "Manual product image");
+  if (!items.length) return;
+
+  if (target === "detail") {
+    detailImportImages = detailImportImages.concat(items);
+    renderProductImportDetailImagePreview();
+  } else {
+    mainImportImages = mainImportImages.concat(items);
+    renderProductImportImagePreview();
+  }
+
+  if (input) input.value = "";
+  setProductImportStatus(`${items.length} image${items.length === 1 ? "" : "s"} added. Drag images to reorder before publishing.`);
 }
 
 async function collectProductFrom1688() {
@@ -336,12 +354,14 @@ async function collectProductFrom1688() {
     }
 
     prefillProductImportV4(payload);
-    selectedManualImportImages = [];
-    importedBase64Images = normalizeCollectedImages(payload.images);
-    importedDetailBase64Images = normalizeCollectedImages(payload.detail_images);
+    mainImportImages = normalizeCollectedImages(payload.images).map((image) => base64ToImportItem(image, "Collected image"));
+    detailImportImages = normalizeCollectedImages(payload.detail_images).map((image) => base64ToImportItem(image, "Collected detail image"));
     renderProductImportImagePreview();
     renderProductImportDetailImagePreview();
-    setCollectorStatus(`Collection complete. ${importedBase64Images.length} main images and ${importedDetailBase64Images.length} detail images ready for upload.`);
+    const detailMessage = detailImportImages.length
+      ? `${detailImportImages.length} detail images ready for review.`
+      : "No detail images collected. You can upload detail images manually.";
+    setCollectorStatus(`Collection complete. ${mainImportImages.length} main images ready for review. ${detailMessage}`);
     setProductImportStatus("Product draft generated. Review and publish when ready.");
   } catch (error) {
     const message = /Failed to fetch|NetworkError|Load failed/i.test(error.message || "")
@@ -386,13 +406,10 @@ function prefillProductImportV4(productJson) {
   fields.moq.value = pickImportValue(productJson, ["moq", "minimum_order_quantity", "minOrderQuantity"]) || "Contact us for MOQ";
 
   const jsonImages = normalizeCollectedImages(productJson.images);
-  if (jsonImages.length) {
-    selectedManualImportImages = [];
-    importedBase64Images = jsonImages;
-    renderProductImportImagePreview();
-  }
+  mainImportImages = jsonImages.map((image) => base64ToImportItem(image, "JSON product image"));
+  renderProductImportImagePreview();
 
-  importedDetailBase64Images = normalizeCollectedImages(productJson.detail_images);
+  detailImportImages = normalizeCollectedImages(productJson.detail_images).map((image) => base64ToImportItem(image, "JSON detail image"));
   renderProductImportDetailImagePreview();
 }
 
@@ -419,84 +436,100 @@ function normalizeImportKeywords(value) {
 }
 
 function renderProductImportImagePreview() {
-  if (importedBase64Images.length) {
-    productImportImagePreview.innerHTML = importedBase64Images.map((image, index) => `
-      <article class="import-preview-item">
-        <img src="${escapeAttribute(base64ImageToDataUrl(image))}" alt="${escapeAttribute(image.filename)}">
-        <div>
-          <strong>${escapeHtml(image.filename)}</strong>
-          <span>Collected image</span>
-        </div>
-        <button class="danger-soft import-delete-button" type="button" data-source="collected" data-index="${index}">Delete Image</button>
-      </article>
-    `).join("");
-    bindProductImportImageDeleteButtons();
-    return;
-  }
-
-  if (!selectedManualImportImages.length) {
+  if (!mainImportImages.length) {
     productImportImagePreview.innerHTML = renderEmptyState("No images selected", "Choose one or more product images before saving or publishing.");
     return;
   }
 
-  productImportImagePreview.innerHTML = selectedManualImportImages.map((file, index) => `
-    <article class="import-preview-item">
-      <img src="${escapeAttribute(URL.createObjectURL(file))}" alt="${escapeAttribute(file.name)}">
+  productImportImagePreview.innerHTML = mainImportImages.map((image, index) => `
+    <article class="import-preview-item" draggable="true" data-image-list="main" data-index="${index}">
+      <img src="${escapeAttribute(importImagePreviewUrl(image))}" alt="${escapeAttribute(image.filename)}">
       <div>
-        <strong>${escapeHtml(file.name)}</strong>
-        <span>${escapeHtml(formatFileSize(file.size))}</span>
+        <strong>${index === 0 ? "Cover: " : ""}${escapeHtml(image.filename)}</strong>
+        <span>${escapeHtml(image.label || "Product image")} · Drag to reorder</span>
       </div>
-      <button class="danger-soft import-delete-button" type="button" data-source="manual" data-index="${index}">Delete Image</button>
+      <button class="danger-soft import-delete-button" type="button" data-list="main" data-index="${index}">Delete Image</button>
     </article>
   `).join("");
-  bindProductImportImageDeleteButtons();
-}
-
-function bindProductImportImageDeleteButtons() {
-  productImportImagePreview.querySelectorAll("[data-source][data-index]").forEach((button) => {
-    button.addEventListener("click", () => {
-      deleteProductImportImage(button.dataset.source, Number(button.dataset.index));
-    });
-  });
+  bindImportImageList(productImportImagePreview, "main");
 }
 
 function renderProductImportDetailImagePreview() {
   if (!productImportDetailImagePreview) return;
 
-  if (!importedDetailBase64Images.length) {
-    productImportDetailImagePreview.innerHTML = renderEmptyState("No detail images collected", "Products can still publish without detail images.");
+  if (!detailImportImages.length) {
+    productImportDetailImagePreview.innerHTML = renderEmptyState("No detail images collected", "No detail images collected. You can upload detail images manually.");
     return;
   }
 
-  productImportDetailImagePreview.innerHTML = importedDetailBase64Images.map((image, index) => `
-    <article class="import-preview-item detail-import-preview-item">
-      <img src="${escapeAttribute(base64ImageToDataUrl(image))}" alt="${escapeAttribute(image.filename)}">
+  productImportDetailImagePreview.innerHTML = detailImportImages.map((image, index) => `
+    <article class="import-preview-item detail-import-preview-item" draggable="true" data-image-list="detail" data-index="${index}">
+      <img src="${escapeAttribute(importImagePreviewUrl(image))}" alt="${escapeAttribute(image.filename)}">
       <div>
         <strong>${escapeHtml(image.filename)}</strong>
-        <span>Collected detail image</span>
+        <span>${escapeHtml(image.label || "Detail image")} · Drag to reorder</span>
       </div>
-      <button class="danger-soft import-delete-button" type="button" data-index="${index}">Delete Image</button>
+      <button class="danger-soft import-delete-button" type="button" data-list="detail" data-index="${index}">Delete Image</button>
     </article>
   `).join("");
 
-  productImportDetailImagePreview.querySelectorAll("[data-index]").forEach((button) => {
-    button.addEventListener("click", () => {
-      importedDetailBase64Images.splice(Number(button.dataset.index), 1);
-      renderProductImportDetailImagePreview();
-      setProductImportStatus("Detail image removed from this Product Studio draft.");
+  bindImportImageList(productImportDetailImagePreview, "detail");
+}
+
+function bindImportImageList(container, listName) {
+  container.querySelectorAll("[data-list][data-index]").forEach((button) => {
+    button.addEventListener("click", () => deleteImportImage(listName, Number(button.dataset.index)));
+  });
+
+  container.querySelectorAll("[draggable][data-index]").forEach((item) => {
+    item.addEventListener("dragstart", (event) => {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(item.dataset.index));
+      item.classList.add("is-dragging");
+    });
+
+    item.addEventListener("dragend", () => item.classList.remove("is-dragging"));
+    item.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      item.classList.add("is-drop-target");
+    });
+    item.addEventListener("dragleave", () => item.classList.remove("is-drop-target"));
+    item.addEventListener("drop", (event) => {
+      event.preventDefault();
+      item.classList.remove("is-drop-target");
+      const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+      const toIndex = Number(item.dataset.index);
+      reorderImportImages(listName, fromIndex, toIndex);
     });
   });
 }
 
-function deleteProductImportImage(source, index) {
-  if (source === "collected") {
-    importedBase64Images.splice(index, 1);
+function deleteImportImage(listName, index) {
+  const list = listName === "detail" ? detailImportImages : mainImportImages;
+  list.splice(index, 1);
+  if (listName === "detail") {
+    renderProductImportDetailImagePreview();
   } else {
-    selectedManualImportImages.splice(index, 1);
-    if (!selectedManualImportImages.length && productImportImagesInput) productImportImagesInput.value = "";
+    renderProductImportImagePreview();
   }
-  renderProductImportImagePreview();
   setProductImportStatus("Image removed from this Product Studio draft.");
+}
+
+function reorderImportImages(listName, fromIndex, toIndex) {
+  if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex) || fromIndex === toIndex) return;
+
+  const list = listName === "detail" ? detailImportImages : mainImportImages;
+  if (!list[fromIndex] || !list[toIndex]) return;
+
+  const [item] = list.splice(fromIndex, 1);
+  list.splice(toIndex, 0, item);
+
+  if (listName === "detail") {
+    renderProductImportDetailImagePreview();
+  } else {
+    renderProductImportImagePreview();
+  }
+  setProductImportStatus("Image order updated. The first product image will be used as the cover.");
 }
 
 async function saveProductImportV4(status) {
@@ -530,48 +563,29 @@ async function saveProductImportV4(status) {
 }
 
 async function uploadProductImportDetailImages() {
-  if (!importedDetailBase64Images.length) return [];
-  return uploadCollectedBase64Images(importedDetailBase64Images);
+  if (!detailImportImages.length) return [];
+  return uploadImportImageItems(detailImportImages);
 }
 
 async function uploadProductImportImages() {
-  if (importedBase64Images.length) return uploadCollectedBase64Images(importedBase64Images);
-
-  const files = selectedManualImportImages;
-  if (!files.length) throw new Error("Please upload at least one product image.");
-
-  const config = getAdminConfig();
-  const bucket = config.productImportBucket || "product-images";
-  const urls = [];
-
-  for (const file of files) {
-    const ext = file.name.match(/\.[a-z0-9]+$/i)?.[0] || "";
-    const filename = `imports/${Date.now()}-${crypto.randomUUID()}${ext}`;
-    const { error } = await client.storage.from(bucket).upload(filename, file, {
-      contentType: file.type || "application/octet-stream",
-      upsert: false
-    });
-
-    if (error) throw new Error(`Image upload failed for ${file.name}: ${error.message || error}`);
-    const { data } = client.storage.from(bucket).getPublicUrl(filename);
-    urls.push(data.publicUrl);
-  }
-
-  return urls;
+  if (!mainImportImages.length) throw new Error("Please upload at least one product image.");
+  return uploadImportImageItems(mainImportImages);
 }
 
-async function uploadCollectedBase64Images(images) {
+async function uploadImportImageItems(items) {
   const config = getAdminConfig();
   const bucket = config.productImportBucket || "product-images";
   const urls = [];
 
-  for (const image of images) {
-    const blob = base64ToBlob(image.base64, mimeTypeFromFilename(image.filename));
+  for (const image of items) {
+    const uploadBody = image.type === "file"
+      ? image.file
+      : base64ToBlob(image.base64, mimeTypeFromFilename(image.filename));
     const safeName = slugify(image.filename.replace(/\.[a-z0-9]+$/i, "")) || "product-image";
     const ext = image.filename.match(/\.[a-z0-9]+$/i)?.[0] || ".jpg";
     const filename = `imports/${Date.now()}-${crypto.randomUUID()}-${safeName}${ext}`;
-    const { error } = await client.storage.from(bucket).upload(filename, blob, {
-      contentType: blob.type || "image/jpeg",
+    const { error } = await client.storage.from(bucket).upload(filename, uploadBody, {
+      contentType: uploadBody.type || "image/jpeg",
       upsert: false
     });
 
@@ -624,9 +638,8 @@ function buildImportErrorMessage(error) {
 
 function resetProductImportV4() {
   productImportV4Form?.reset();
-  importedBase64Images = [];
-  importedDetailBase64Images = [];
-  selectedManualImportImages = [];
+  mainImportImages = [];
+  detailImportImages = [];
   if (productImportV4Form?.elements) {
     if (productImportV4Form.elements.chinese_title) productImportV4Form.elements.chinese_title.value = "";
     productImportV4Form.elements.oem_logo.value = "Available";
@@ -637,7 +650,7 @@ function resetProductImportV4() {
   if (productImportJsonStatus) productImportJsonStatus.textContent = "No JSON loaded yet.";
   setCollectorStatus("Please start LINF Collector API on your computer first.");
   if (productImportImagePreview) productImportImagePreview.innerHTML = renderEmptyState("No images selected", "Choose one or more product images before saving or publishing.");
-  if (productImportDetailImagePreview) productImportDetailImagePreview.innerHTML = renderEmptyState("No detail images collected", "Products can still publish without detail images.");
+  if (productImportDetailImagePreview) productImportDetailImagePreview.innerHTML = renderEmptyState("No detail images collected", "No detail images collected. You can upload detail images manually.");
   setProductImportStatus("");
 }
 
@@ -656,6 +669,31 @@ function formatFileSize(size) {
   if (!Number.isFinite(size)) return "-";
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function filesToImportItems(files, label) {
+  return files
+    .filter((file) => file && file.type && file.type.startsWith("image/"))
+    .map((file) => ({
+      type: "file",
+      file,
+      filename: file.name || "product-image.jpg",
+      label: `${label} · ${formatFileSize(file.size)}`
+    }));
+}
+
+function base64ToImportItem(image, label) {
+  return {
+    type: "base64",
+    filename: image.filename,
+    base64: image.base64,
+    label
+  };
+}
+
+function importImagePreviewUrl(image) {
+  if (image.type === "file") return URL.createObjectURL(image.file);
+  return base64ImageToDataUrl(image);
 }
 
 function normalizeCollectedImages(images) {

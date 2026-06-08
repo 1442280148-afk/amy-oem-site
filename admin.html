@@ -344,6 +344,13 @@
               <p>Image Preview</p>
               <span>Images upload to Supabase Storage bucket product-images, then public URLs are saved to products.images.</span>
             </div>
+            <div class="import-upload-row">
+              <label class="soft-button import-upload-button">
+                Upload Product Images
+                <input type="file" id="productImportAppendImages" accept="image/*" multiple>
+              </label>
+              <span>Please remove images with Chinese text, platform logos, QR codes, or unrelated icons before publishing.</span>
+            </div>
             <div id="productImportImagePreview" class="import-image-preview">
               <div class="empty-state">
                 <h3>No images selected</h3>
@@ -357,10 +364,17 @@
               <p>Detail Images Preview</p>
               <span>Long description images upload to Supabase Storage and are saved to products.detail_images.</span>
             </div>
+            <div class="import-upload-row">
+              <label class="soft-button import-upload-button">
+                Upload Detail Images
+                <input type="file" id="productImportDetailImages" accept="image/*" multiple>
+              </label>
+              <span>Please remove images with Chinese text, platform logos, QR codes, or unrelated icons before publishing.</span>
+            </div>
             <div id="productImportDetailImagePreview" class="import-image-preview detail-import-preview">
               <div class="empty-state">
                 <h3>No detail images collected</h3>
-                <p>Collect from 1688 or load product.json with detail_images. Products can still publish without detail images.</p>
+                <p>No detail images collected. You can upload detail images manually.</p>
               </div>
             </div>
           </div>

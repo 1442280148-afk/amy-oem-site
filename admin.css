@@ -1201,6 +1201,29 @@ input[type="checkbox"]:checked::after {
   gap: 12px;
 }
 
+.import-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.import-upload-row span {
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.import-upload-button {
+  cursor: pointer;
+}
+
+.import-upload-button input {
+  display: none;
+}
+
 .import-image-preview .empty-state {
   grid-column: 1 / -1;
 }
@@ -1213,6 +1236,19 @@ input[type="checkbox"]:checked::after {
   border: 1px solid rgba(148, 163, 184, .14);
   border-radius: 18px;
   background: rgba(255, 255, 255, .045);
+  cursor: grab;
+  transition: border-color .2s ease, transform .2s ease, background .2s ease;
+}
+
+.import-preview-item.is-dragging {
+  opacity: .55;
+  cursor: grabbing;
+}
+
+.import-preview-item.is-drop-target {
+  border-color: rgba(96, 165, 250, .8);
+  background: rgba(37, 99, 235, .14);
+  transform: translateY(-2px);
 }
 
 .import-preview-item img {
