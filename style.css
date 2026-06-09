@@ -6708,31 +6708,37 @@ html{
 
 .factory-showcase-grid{
   position:relative;
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:18px;
+  display:flex;
+  flex-direction:column;
+  gap:24px;
   max-width:1160px;
   margin:0 auto;
 }
 
 .factory-showcase-card{
   position:relative;
-  min-height:390px;
+  display:grid;
+  grid-template-columns:minmax(0,58%) minmax(0,42%);
+  min-height:220px;
+  height:260px;
+  max-height:260px;
   border:1px solid rgba(255,255,255,.12);
-  border-radius:30px;
+  border-radius:20px;
   overflow:hidden;
-  background:linear-gradient(145deg,#0f1b32,#07111f);
-  box-shadow:0 28px 86px rgba(0,0,0,.34);
+  background:
+    linear-gradient(135deg,rgba(15,30,54,.96),rgba(7,17,31,.96)),
+    #07111f;
+  box-shadow:0 22px 64px rgba(0,0,0,.3);
   transform:translateZ(0);
 }
 
 .factory-showcase-card img{
   width:100%;
   height:100%;
-  min-height:390px;
-  object-fit:cover;
-  opacity:.86;
-  transform:scale(1.02);
+  object-fit:contain;
+  object-position:center center;
+  background:#0d1b2a;
+  opacity:.9;
   transition:transform .48s ease,opacity .48s ease;
 }
 
@@ -6741,42 +6747,45 @@ html{
   position:absolute;
   inset:0;
   z-index:1;
+  pointer-events:none;
   background:
-    linear-gradient(180deg,rgba(5,12,24,.06) 0%,rgba(5,12,24,.22) 44%,rgba(5,12,24,.86) 100%),
-    linear-gradient(45deg,rgba(14,165,233,.2),transparent 45%);
+    linear-gradient(90deg,rgba(5,12,24,.04) 0%,rgba(5,12,24,0) 38%,rgba(14,165,233,.14) 100%),
+    linear-gradient(135deg,transparent 0%,rgba(125,211,252,.09) 100%);
 }
 
 .factory-showcase-card div{
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
+  position:relative;
   z-index:2;
-  padding:24px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:24px 24px;
 }
 
 .factory-showcase-card span{
   color:rgba(125,211,252,.94);
-  font-size:12px;
+  font-size:11px;
   font-weight:900;
   letter-spacing:.12em;
 }
 
 .factory-showcase-card h3{
-  margin-top:10px;
+  margin-top:12px;
   color:#fff;
-  font-size:22px;
+  font-size:28px;
+  line-height:1.18;
 }
 
 .factory-showcase-card p{
-  margin-top:10px;
+  margin-top:8px;
   color:rgba(232,242,255,.76);
-  line-height:1.65;
+  font-size:17px;
+  line-height:1.45;
 }
 
 .factory-showcase-card:hover img{
   opacity:1;
-  transform:scale(1.08);
+  transform:none;
 }
 
 .product-card{
@@ -6904,8 +6913,7 @@ html{
     grid-template-columns:1fr;
   }
 
-  .b2b-trust-grid,
-  .factory-showcase-grid{
+  .b2b-trust-grid{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
@@ -6917,8 +6925,7 @@ html{
   }
 
   .about-linftech-stats,
-  .b2b-trust-grid,
-  .factory-showcase-grid{
+  .b2b-trust-grid{
     grid-template-columns:1fr;
   }
 
@@ -6928,9 +6935,23 @@ html{
     border-radius:24px;
   }
 
-  .factory-showcase-card,
+  .factory-showcase-grid{
+    gap:24px;
+  }
+
+  .factory-showcase-card{
+    grid-template-columns:1fr;
+    height:auto;
+    min-height:0;
+    max-height:none;
+  }
+
   .factory-showcase-card img{
-    min-height:320px;
+    height:190px;
+  }
+
+  .factory-showcase-card div{
+    padding:24px;
   }
 
   .product-specs{
@@ -7404,9 +7425,7 @@ html{
 }
 
 .factory-showcase-card img{
-  background:
-    radial-gradient(circle at 40% 20%,rgba(125,211,252,.22),transparent 34%),
-    linear-gradient(145deg,#0b172a,#111827);
+  background:#0d1b2a;
 }
 
 .whatsapp-container{
