@@ -225,19 +225,25 @@
 
 
   async function saveRfqInquiry(payload, items) {
-    const { error } = await window.supabaseClient.from("inquiries").insert([payload]);
-    if (!error) return;
+    const fullInsert = await window.supabaseClient.from("inquiries").insert([payload]);
+    if (!fullInsert.error) return;
 
-    if (!isMissingRfqColumnError(error)) throw error;
+    if (!isMissingInquiryColumnError(fullInsert.error)) throw fullInsert.error;
 
-    const fallbackPayload = buildLegacyInquiryPayload(payload, items);
-    const fallback = await window.supabaseClient.from("inquiries").insert([fallbackPayload]);
-    if (fallback.error) throw error;
+    const legacyPayload = buildLegacyInquiryPayload(payload, items);
+    const legacyInsert = await window.supabaseClient.from("inquiries").insert([legacyPayload]);
+    if (!legacyInsert.error) return;
+
+    if (!isMissingInquiryColumnError(legacyInsert.error)) throw legacyInsert.error;
+
+    const minimalPayload = buildMinimalInquiryPayload(payload, items);
+    const minimalInsert = await window.supabaseClient.from("inquiries").insert([minimalPayload]);
+    if (minimalInsert.error) throw minimalInsert.error;
   }
 
-  function isMissingRfqColumnError(error) {
+  function isMissingInquiryColumnError(error) {
     const message = String(error?.message || error?.details || error?.hint || "");
-    return /column|schema cache|Could not find|PGRST204|buyer_name|target_market|expected_quantity|products/i.test(message);
+    return /column|schema cache|Could not find|PGRST204|buyer_name|company|country|quantity|status|target_market|expected_quantity|products/i.test(message);
   }
 
   function buildLegacyInquiryPayload(payload, items) {
@@ -245,6 +251,8 @@
       return `${index + 1}. ${item.product_name} | ${item.category || "-"} | Qty: ${item.quantity || 1} | Notes: ${item.notes || "-"}`;
     }).join("\n");
     const requirementLines = [
+      `Country: ${payload.country || "-"}`,
+      `Expected Quantity: ${payload.expected_quantity || payload.quantity || "-"}`,
       `OEM Logo Required: ${payload.oem_logo_required || "-"}`,
       `Custom Packaging Required: ${payload.custom_packaging_required || "-"}`,
       `Sample Order Needed: ${payload.sample_order_needed || "-"}`,
@@ -261,6 +269,17 @@
       quantity: payload.quantity || payload.expected_quantity || "",
       message: [`RFQ Center Submission`, rfqLines, requirementLines, payload.message || ""].filter(Boolean).join("\n\n"),
       status: "new"
+    };
+  }
+
+  function buildMinimalInquiryPayload(payload, items) {
+    const legacy = buildLegacyInquiryPayload(payload, items);
+    return {
+      name: legacy.name,
+      email: legacy.email,
+      whatsapp: legacy.whatsapp,
+      product: legacy.product,
+      message: legacy.message
     };
   }
 
@@ -417,5 +436,6 @@
 
   window.addEventListener("storage", updateRfqCount);
 })();
+
 
 
