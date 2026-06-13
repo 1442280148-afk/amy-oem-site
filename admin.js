@@ -1636,50 +1636,57 @@ function renderInquiries(inquiries) {
   }
 
   inquiryList.innerHTML = inquiries.map((inquiry) => {
-    const whatsappUrl = buildWhatsAppLink(inquiry.whatsapp);
     const rfqProducts = normalizeRfqProducts(inquiry.products);
-    const buyerName = inquiry.buyer_name || inquiry.name || "Unnamed Customer";
+    const buyerName = getInquiryBuyerName(inquiry);
+    const email = getInquiryValue(inquiry, ["email"], "-");
+    const whatsapp = getInquiryValue(inquiry, ["whatsapp"], "-");
+    const country = getInquiryValue(inquiry, ["country"], "-");
+    const message = getInquiryValue(inquiry, ["message"], "No message provided.");
+    const createdAt = getInquiryValue(inquiry, ["created_at"], "");
+    const status = normalizeInquiryStatus(inquiry.status);
+    const productsCount = getInquiryProductsCount(inquiry, rfqProducts);
+    const whatsappUrl = buildWhatsAppLink(whatsapp);
+
     return `
       <article class="admin-inquiry" data-inquiry-id="${escapeAttribute(inquiry.id)}">
         <div>
           <div class="inquiry-head">
             <div>
               <h3>${escapeHtml(buyerName)}</h3>
-              <p>${escapeHtml(inquiry.email || "No email provided")}</p>
+              <p>${escapeHtml(email === "-" ? "No email provided" : email)}</p>
             </div>
-            <select class="inquiry-status-select ${escapeAttribute(normalizeInquiryStatus(inquiry.status))}" data-action="status" data-id="${escapeAttribute(inquiry.id)}">
-              ${renderStatusOptions(inquiry.status)}
+            <select class="inquiry-status-select ${escapeAttribute(status)}" data-action="status" data-id="${escapeAttribute(inquiry.id)}">
+              ${renderStatusOptions(status)}
             </select>
           </div>
           <div class="inquiry-meta">
-            <p><strong>Email:</strong> ${escapeHtml(inquiry.email || "-")}</p>
-            <p><strong>Company:</strong> ${escapeHtml(inquiry.company || "-")}</p>
-            <p><strong>Country:</strong> ${escapeHtml(inquiry.country || "-")}</p>
-            <p><strong>WhatsApp:</strong> ${escapeHtml(inquiry.whatsapp || "-")}</p>
-            <p><strong>Products:</strong> ${escapeHtml(rfqProducts.length ? `${rfqProducts.length} RFQ item${rfqProducts.length === 1 ? "" : "s"}` : inquiry.product || "-")}</p>
-            <p><strong>Expected Quantity:</strong> ${escapeHtml(inquiry.expected_quantity || inquiry.quantity || "-")}</p>
-            <p><strong>Website:</strong> ${escapeHtml(inquiry.website || "-")}</p>
-            <p><strong>Target Market:</strong> ${escapeHtml(inquiry.target_market || "-")}</p>
-            <p><strong>Submitted:</strong> ${escapeHtml(formatDate(inquiry.created_at))}</p>
+            <p><strong>Buyer Name:</strong> ${escapeHtml(buyerName)}</p>
+            <p><strong>Country:</strong> ${escapeHtml(country)}</p>
+            <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+            <p><strong>WhatsApp:</strong> ${escapeHtml(whatsapp)}</p>
+            <p><strong>Products Count:</strong> ${escapeHtml(productsCount)}</p>
+            <p><strong>Message:</strong> ${escapeHtml(message)}</p>
+            <p><strong>Status:</strong> ${escapeHtml(capitalize(status))}</p>
+            <p><strong>Created Time:</strong> ${escapeHtml(formatDate(createdAt))}</p>
           </div>
           <div class="inquiry-detail" hidden>
             <div class="inquiry-detail-grid">
               <div class="detail-block">
-                <strong>Customer Info</strong>
-                <p>${escapeHtml(buyerName)}<br>${escapeHtml(inquiry.company || "-")}<br>${escapeHtml(inquiry.country || "-")}<br>${escapeHtml(inquiry.email || "-")}<br>${escapeHtml(inquiry.whatsapp || "-")}<br>${escapeHtml(inquiry.website || "-")}<br>${escapeHtml(inquiry.target_market || "-")}</p>
+                <strong>Buyer Information</strong>
+                <p>Buyer Name: ${escapeHtml(buyerName)}<br>Country: ${escapeHtml(country)}<br>Email: ${escapeHtml(email)}<br>WhatsApp: ${escapeHtml(whatsapp)}</p>
               </div>
               <div class="detail-block">
                 <strong>Purchase Requirements</strong>
-                <p>Expected Quantity: ${escapeHtml(inquiry.expected_quantity || inquiry.quantity || "-")}<br>OEM Logo: ${escapeHtml(inquiry.oem_logo_required || "-")}<br>Custom Packaging: ${escapeHtml(inquiry.custom_packaging_required || "-")}<br>Sample Order: ${escapeHtml(inquiry.sample_order_needed || "-")}<br>Destination: ${escapeHtml(inquiry.delivery_destination || "-")}<br>${escapeHtml(formatDate(inquiry.created_at))}</p>
+                <p>Expected Quantity: ${escapeHtml(getInquiryValue(inquiry, ["expected_quantity", "quantity"], "-"))}<br>OEM Logo: ${escapeHtml(getInquiryValue(inquiry, ["oem_logo_required"], "-"))}<br>Custom Packaging: ${escapeHtml(getInquiryValue(inquiry, ["custom_packaging_required"], "-"))}<br>Sample Order: ${escapeHtml(getInquiryValue(inquiry, ["sample_order_needed"], "-"))}<br>Destination: ${escapeHtml(getInquiryValue(inquiry, ["delivery_destination"], "-"))}<br>Created Time: ${escapeHtml(formatDate(createdAt))}</p>
               </div>
             </div>
             <div class="detail-block">
               <strong>RFQ Product List</strong>
-              ${renderRfqProducts(rfqProducts)}
+              ${renderRfqProducts(rfqProducts, inquiry)}
             </div>
             <div class="detail-block">
               <strong>Inquiry Message</strong>
-              <p class="inquiry-message">${escapeHtml(inquiry.message || "No message provided.")}</p>
+              <p class="inquiry-message">${escapeHtml(message)}</p>
             </div>
             <div class="detail-block">
               <strong>Quick Reply Template</strong>
@@ -1712,6 +1719,23 @@ function renderInquiries(inquiries) {
   });
 }
 
+function getInquiryBuyerName(inquiry) {
+  return getInquiryValue(inquiry, ["buyer_name", "name", "customer_name"], "Unknown Buyer");
+}
+
+function getInquiryValue(inquiry, keys, fallback = "-") {
+  for (const key of keys) {
+    const value = inquiry?.[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+  }
+  return fallback;
+}
+
+function getInquiryProductsCount(inquiry, products) {
+  if (products.length) return `${products.length} product${products.length === 1 ? "" : "s"}`;
+  return getInquiryValue(inquiry, ["product"], "") ? "1 product" : "0 products";
+}
+
 function normalizeRfqProducts(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (!value) return [];
@@ -1723,19 +1747,30 @@ function normalizeRfqProducts(value) {
   }
 }
 
-function renderRfqProducts(products) {
-  if (!products.length) return `<p>No RFQ products saved.</p>`;
+function renderRfqProducts(products, inquiry = {}) {
+  const fallbackProduct = getInquiryValue(inquiry, ["product"], "");
+  if (!products.length && !fallbackProduct) return `<p>No RFQ products saved.</p>`;
+
+  const list = products.length ? products : [{ product_name: fallbackProduct, quantity: getInquiryValue(inquiry, ["quantity", "expected_quantity"], "-"), notes: getInquiryValue(inquiry, ["message"], "-") }];
+
   return `
     <div class="admin-rfq-products">
-      ${products.map((product) => `
-        <article class="admin-rfq-product">
-          ${product.product_image ? `<img src="${escapeAttribute(product.product_image)}" alt="${escapeAttribute(product.product_name || "RFQ product")}">` : `<div class="compact-thumb">RFQ</div>`}
-          <div>
-            <strong>${escapeHtml(product.product_name || "RFQ Product")}</strong>
-            <p>${escapeHtml(product.category || "-")}<br>Quantity: ${escapeHtml(product.quantity || 1)}<br>Notes: ${escapeHtml(product.notes || "-")}</p>
-          </div>
-        </article>
-      `).join("")}
+      ${list.map((product) => {
+        const productName = product.product_name || product.name || product.title || "RFQ Product";
+        const productImage = product.product_image || product.image || product.image_url || "";
+        const category = product.category || product.product_category || "-";
+        const quantity = product.quantity || product.qty || 1;
+        const notes = product.notes || product.note || "-";
+        return `
+          <article class="admin-rfq-product">
+            ${productImage ? `<img src="${escapeAttribute(productImage)}" alt="${escapeAttribute(productName)}">` : `<div class="compact-thumb">RFQ</div>`}
+            <div>
+              <strong>${escapeHtml(productName)}</strong>
+              <p>${escapeHtml(category)}<br>Quantity: ${escapeHtml(quantity)}<br>Notes: ${escapeHtml(notes)}</p>
+            </div>
+          </article>
+        `;
+      }).join("")}
     </div>
   `;
 }
@@ -1785,7 +1820,7 @@ async function updateInquiryStatus(id, status) {
 async function deleteInquiry(inquiry) {
   await ensureAdminSession();
   if (!inquiry) return;
-  const confirmed = window.confirm(`Delete inquiry from ${inquiry.name || "this customer"}?`);
+  const confirmed = window.confirm(`Delete inquiry from ${getInquiryBuyerName(inquiry)}?`);
   if (!confirmed) return;
 
   try {
@@ -1831,19 +1866,24 @@ function renderDashboard() {
     : renderEmptyState("No products yet", "Recent products will appear after you add catalog items.");
 
   recentInquiries.innerHTML = inquiriesCache.length
-    ? inquiriesCache.slice(0, 5).map((inquiry) => `
-      <article class="compact-item">
-        <div class="compact-thumb">${escapeHtml(getInitials(inquiry.name || inquiry.email || "Lead"))}</div>
-        <div>
-          <h3>${escapeHtml(buyerName)}</h3>
-          <p>${escapeHtml(inquiry.product || inquiry.email || "No product specified")}</p>
-        </div>
-        <span class="status-pill ${escapeAttribute(normalizeInquiryStatus(inquiry.status))}">${escapeHtml(normalizeInquiryStatus(inquiry.status))}</span>
-      </article>
-    `).join("")
+    ? inquiriesCache.slice(0, 5).map((inquiry) => {
+      const buyerName = getInquiryBuyerName(inquiry);
+      const email = getInquiryValue(inquiry, ["email"], "");
+      const product = getInquiryValue(inquiry, ["product"], "No product specified");
+      const status = normalizeInquiryStatus(inquiry.status);
+      return `
+        <article class="compact-item">
+          <div class="compact-thumb">${escapeHtml(getInitials(buyerName || email || "Lead"))}</div>
+          <div>
+            <h3>${escapeHtml(buyerName)}</h3>
+            <p>${escapeHtml(product || email || "No product specified")}</p>
+          </div>
+          <span class="status-pill ${escapeAttribute(status)}">${escapeHtml(status)}</span>
+        </article>
+      `;
+    }).join("")
     : renderEmptyState("No inquiries yet", "New buyer leads will appear here.");
-}
-function buildWhatsAppLink(value) {
+}function buildWhatsAppLink(value) {
   const digits = String(value || "").replace(/[^0-9]/g, "");
   if (!digits) return "";
   const text = "Hello, thank you for your inquiry. Could you please share your target quantity and destination country?";
@@ -2011,6 +2051,9 @@ window.XIQI_ADMIN_READY
     console.warn(error.message || "Admin authentication failed.");
   });
 });
+
+
+
 
 
 
