@@ -166,8 +166,14 @@ function renderFilteredProducts() {
 }
 
 function getProductCardImage(product) {
-  const images = normalizeGallery(product.images);
-  return images.find(Boolean) || product.image_url || "logo.png";
+  const images = []
+    .concat(normalizeGallery(product.images))
+    .concat(product.image || [])
+    .concat(product.image_url || [])
+    .concat(product.thumbnail || [])
+    .concat(normalizeGallery(product.gallery))
+    .filter(Boolean);
+  return images.find(Boolean) || "logo.png";
 }
 
 function buildWhatsappLink() {
@@ -462,5 +468,6 @@ function escapeHtml(value) {
 function escapeAttribute(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
+
 
 

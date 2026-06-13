@@ -22,11 +22,15 @@
     return {
       product_id: productId,
       product_name: productName,
-      product_image: clean(item.product_image || item.image || item.image_url || "logo.png"),
+      product_image: getProductImage(item),
       category: clean(item.category || "Wholesale Accessories"),
       quantity: Math.max(1, Number(item.quantity || 1)),
       notes: clean(item.notes || "")
     };
+  }
+
+  function getProductImage(item) {
+    return clean(item.product_image || item.image || item.image_url || item.thumbnail || item.images?.[0] || item.gallery?.[0] || "logo.png");
   }
 
   function addItem(item) {
@@ -115,7 +119,7 @@
     return normalizeItem({
       product_id: button.dataset.productId,
       product_name: button.dataset.productName,
-      product_image: button.dataset.productImage,
+      product_image: button.dataset.productImage || button.dataset.image || button.dataset.imageUrl || button.dataset.thumbnail,
       category: button.dataset.category,
       quantity: button.dataset.quantity || 1,
       notes: button.dataset.notes || ""
@@ -436,6 +440,8 @@
 
   window.addEventListener("storage", updateRfqCount);
 })();
+
+
 
 
 

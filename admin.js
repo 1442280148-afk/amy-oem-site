@@ -1669,42 +1669,21 @@ function renderInquiries(inquiries) {
             <p><strong>Status:</strong> ${escapeHtml(capitalize(status))}</p>
             <p><strong>Created Time:</strong> ${escapeHtml(formatDate(createdAt))}</p>
           </div>
-          <div class="inquiry-detail" hidden>
-            <div class="inquiry-detail-grid">
-              <div class="detail-block">
-                <strong>Buyer Information</strong>
-                <p>Buyer Name: ${escapeHtml(buyerName)}<br>Country: ${escapeHtml(country)}<br>Email: ${escapeHtml(email)}<br>WhatsApp: ${escapeHtml(whatsapp)}</p>
-              </div>
-              <div class="detail-block">
-                <strong>Purchase Requirements</strong>
-                <p>Expected Quantity: ${escapeHtml(getInquiryValue(inquiry, ["expected_quantity", "quantity"], "-"))}<br>OEM Logo: ${escapeHtml(getInquiryValue(inquiry, ["oem_logo_required"], "-"))}<br>Custom Packaging: ${escapeHtml(getInquiryValue(inquiry, ["custom_packaging_required"], "-"))}<br>Sample Order: ${escapeHtml(getInquiryValue(inquiry, ["sample_order_needed"], "-"))}<br>Destination: ${escapeHtml(getInquiryValue(inquiry, ["delivery_destination"], "-"))}<br>Created Time: ${escapeHtml(formatDate(createdAt))}</p>
-              </div>
-            </div>
-            <div class="detail-block">
-              <strong>RFQ Product List</strong>
-              ${renderRfqProducts(rfqProducts, inquiry)}
-            </div>
-            <div class="detail-block">
-              <strong>Inquiry Message</strong>
-              <p class="inquiry-message">${escapeHtml(message)}</p>
-            </div>
-            <div class="detail-block">
-              <strong>Quick Reply Template</strong>
-              <p class="quick-reply">Thank you for your inquiry. Could you please share your target quantity, destination country, and preferred product specifications? We will prepare a quotation for you shortly.</p>
-            </div>
-          </div>
         </div>
         <div class="inquiry-actions">
           ${whatsappUrl ? `<a class="wa-link" href="${escapeAttribute(whatsappUrl)}" target="_blank" rel="noopener">Open WhatsApp</a>` : ""}
-          <button type="button" data-action="view" data-id="${escapeAttribute(inquiry.id)}">View Details</button>
+          <button type="button" class="view-inquiry-detail-btn" data-id="${escapeAttribute(inquiry.id)}">View Details</button>
           <button type="button" data-action="delete" data-id="${escapeAttribute(inquiry.id)}">Delete</button>
         </div>
       </article>
     `;
   }).join("");
 
-  inquiryList.querySelectorAll('button[data-action="view"]').forEach((button) => {
-    button.addEventListener("click", () => toggleInquiryDetail(button));
+  inquiryList.querySelectorAll(".view-inquiry-detail-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const inquiry = inquiries.find((item) => String(item.id) === String(button.dataset.id));
+      openInquiryDetailModal(inquiry);
+    });
   });
 
   inquiryList.querySelectorAll('button[data-action="delete"]').forEach((button) => {
@@ -1740,39 +1719,132 @@ function normalizeRfqProducts(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (!value) return [];
   try {
-    const parsed = JSON.parse(value);
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
     return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
   } catch {
     return [];
   }
 }
 
-function renderRfqProducts(products, inquiry = {}) {
-  const fallbackProduct = getInquiryValue(inquiry, ["product"], "");
-  if (!products.length && !fallbackProduct) return `<p>No RFQ products saved.</p>`;
+function getRfqProductName(product) {
+  return product?.product_name || product?.name || product?.title || "RFQ Product";
+}
 
-  const list = products.length ? products : [{ product_name: fallbackProduct, quantity: getInquiryValue(inquiry, ["quantity", "expected_quantity"], "-"), notes: getInquiryValue(inquiry, ["message"], "-") }];
+function getRfqProductImage(product) {
+  return product?.product_image || product?.image || product?.image_url || product?.thumbnail || product?.images?.[0] || product?.gallery?.[0] || "";
+}
+
+function getRfqProductId(product) {
+  return product?.product_id || product?.id || "";
+}
+
+function renderRfqProducts(products) {
+  if (!products.length) return `<p class="admin-rfq-empty">No products.</p>`;
 
   return `
     <div class="admin-rfq-products">
-      ${list.map((product) => {
-        const productName = product.product_name || product.name || product.title || "RFQ Product";
-        const productImage = product.product_image || product.image || product.image_url || "";
+      ${products.map((product) => {
+        const productId = getRfqProductId(product);
+        const productName = getRfqProductName(product);
+        const productImage = getRfqProductImage(product);
         const category = product.category || product.product_category || "-";
         const quantity = product.quantity || product.qty || 1;
         const notes = product.notes || product.note || "-";
         return `
           <article class="admin-rfq-product">
-            ${productImage ? `<img src="${escapeAttribute(productImage)}" alt="${escapeAttribute(productName)}">` : `<div class="compact-thumb">RFQ</div>`}
+            ${productImage ? `<img src="${escapeAttribute(productImage)}" alt="${escapeAttribute(productName)}">` : `<div class="admin-rfq-placeholder">No Image</div>`}
             <div>
               <strong>${escapeHtml(productName)}</strong>
-              <p>${escapeHtml(category)}<br>Quantity: ${escapeHtml(quantity)}<br>Notes: ${escapeHtml(notes)}</p>
+              <p>Category: ${escapeHtml(category)}<br>Quantity: ${escapeHtml(quantity)}<br>Notes: ${escapeHtml(notes)}<br>Product ID: ${escapeHtml(productId || "-")}</p>
+              ${productId ? `<a class="view-product-from-rfq" href="product-detail.html?id=${encodeURIComponent(productId)}" target="_blank" rel="noopener">View Product</a>` : ""}
             </div>
           </article>
         `;
       }).join("")}
     </div>
   `;
+}
+
+function ensureInquiryDetailModal() {
+  let modal = document.getElementById("inquiryDetailModal");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "inquiryDetailModal";
+  modal.className = "inquiry-detail-modal";
+  modal.hidden = true;
+  modal.innerHTML = `
+    <div class="inquiry-detail-modal__backdrop" data-close-inquiry-modal></div>
+    <section class="inquiry-detail-modal__panel" role="dialog" aria-modal="true" aria-labelledby="inquiryDetailModalTitle">
+      <button type="button" class="inquiry-detail-modal__close" data-close-inquiry-modal aria-label="Close inquiry details">Close</button>
+      <div id="inquiryDetailModalContent"></div>
+    </section>
+  `;
+  document.body.appendChild(modal);
+
+  modal.addEventListener("click", (event) => {
+    if (event.target.closest("[data-close-inquiry-modal]")) closeInquiryDetailModal();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) closeInquiryDetailModal();
+  });
+
+  return modal;
+}
+
+function openInquiryDetailModal(inquiry) {
+  if (!inquiry) return;
+  const modal = ensureInquiryDetailModal();
+  const content = modal.querySelector("#inquiryDetailModalContent");
+  if (!content) return;
+
+  const products = normalizeRfqProducts(inquiry.products);
+  const buyerName = getInquiryBuyerName(inquiry);
+  const status = normalizeInquiryStatus(inquiry.status);
+  const createdAt = getInquiryValue(inquiry, ["created_at"], "");
+
+  content.innerHTML = `
+    <div class="inquiry-modal-header">
+      <span>RFQ Inquiry Detail</span>
+      <h2 id="inquiryDetailModalTitle">${escapeHtml(buyerName)}</h2>
+    </div>
+    <div class="inquiry-modal-grid">
+      <section class="inquiry-modal-block">
+        <h3>Buyer Info</h3>
+        <p><strong>Buyer Name:</strong> ${escapeHtml(buyerName)}</p>
+        <p><strong>Country:</strong> ${escapeHtml(getInquiryValue(inquiry, ["country"], "-"))}</p>
+        <p><strong>Email:</strong> ${escapeHtml(getInquiryValue(inquiry, ["email"], "-"))}</p>
+        <p><strong>WhatsApp:</strong> ${escapeHtml(getInquiryValue(inquiry, ["whatsapp"], "-"))}</p>
+        <p><strong>Created Time:</strong> ${escapeHtml(formatDate(createdAt))}</p>
+        <p><strong>Status:</strong> ${escapeHtml(capitalize(status))}</p>
+      </section>
+      <section class="inquiry-modal-block">
+        <h3>Purchase Requirements</h3>
+        <p><strong>Expected Quantity:</strong> ${escapeHtml(getInquiryValue(inquiry, ["expected_quantity", "quantity"], "-"))}</p>
+        <p><strong>OEM Logo Required:</strong> ${escapeHtml(getInquiryValue(inquiry, ["oem_logo_required"], "-"))}</p>
+        <p><strong>Custom Packaging Required:</strong> ${escapeHtml(getInquiryValue(inquiry, ["custom_packaging_required"], "-"))}</p>
+        <p><strong>Sample Order Needed:</strong> ${escapeHtml(getInquiryValue(inquiry, ["sample_order_needed"], "-"))}</p>
+        <p><strong>Delivery Destination:</strong> ${escapeHtml(getInquiryValue(inquiry, ["delivery_destination"], "-"))}</p>
+        <p><strong>Message:</strong> ${escapeHtml(getInquiryValue(inquiry, ["message"], "No message provided."))}</p>
+      </section>
+    </div>
+    <section class="inquiry-modal-block inquiry-modal-products">
+      <h3>Products List</h3>
+      ${renderRfqProducts(products)}
+    </section>
+  `;
+
+  modal.hidden = false;
+  document.body.classList.add("inquiry-modal-open");
+  console.log("Inquiry detail opened:", inquiry.id);
+}
+
+function closeInquiryDetailModal() {
+  const modal = document.getElementById("inquiryDetailModal");
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove("inquiry-modal-open");
 }
 function renderStatusOptions(status) {
   const current = normalizeInquiryStatus(status);
@@ -2051,6 +2123,7 @@ window.XIQI_ADMIN_READY
     console.warn(error.message || "Admin authentication failed.");
   });
 });
+
 
 
 
