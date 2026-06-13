@@ -14,6 +14,11 @@ const form = document.getElementById("productForm");
 const statusText = document.getElementById("formStatus");
 const productList = document.getElementById("productList");
 const refreshButton = document.getElementById("refreshProducts");
+const productSearchInput = document.getElementById("productSearchInput");
+const productCategoryFilter = document.getElementById("productCategoryFilter");
+const productListSummary = document.getElementById("productListSummary");
+const productPagination = document.getElementById("productPagination");
+const deleteSelectedProductsButton = document.getElementById("deleteSelectedProducts");
 const inquiryList = document.getElementById("inquiryList");
 const refreshInquiriesButton = document.getElementById("refreshInquiries");
 const categoryForm = document.getElementById("categoryForm");
@@ -49,12 +54,16 @@ const productImportStatus = document.getElementById("productImportStatus");
 const saveImportDraftButton = document.getElementById("saveImportDraft");
 const publishImportProductButton = document.getElementById("publishImportProduct");
 const resetImportV4Button = document.getElementById("resetImportV4");
+const runImageOcrButton = document.getElementById("runImageOcr");
 const collectorUrlInput = document.getElementById("collectorUrl");
 const collectFrom1688Button = document.getElementById("collectFrom1688");
 const collectorStatus = document.getElementById("collectorStatus");
 const toast = document.getElementById("adminToast");
 
 let productsCache = [];
+let selectedProductIds = new Set();
+let productCurrentPage = 1;
+const productsPerPage = 20;
 let categoriesCache = [];
 let factoryVideosCache = [];
 let inquiriesCache = [];
@@ -290,6 +299,20 @@ factoryForm.addEventListener("submit", async (event) => {
   }
 });
 
+function setupProductManagement() {
+  productSearchInput?.addEventListener("input", () => {
+    productCurrentPage = 1;
+    renderProducts();
+  });
+
+  productCategoryFilter?.addEventListener("change", () => {
+    productCurrentPage = 1;
+    renderProducts();
+  });
+
+  deleteSelectedProductsButton?.addEventListener("click", deleteSelectedProducts);
+}
+
 function setupProductImportV4() {
   if (!productImportV4Form) return;
 
@@ -301,6 +324,8 @@ function setupProductImportV4() {
   saveImportDraftButton?.addEventListener("click", () => saveProductImportV4("draft"));
   publishImportProductButton?.addEventListener("click", () => saveProductImportV4("published"));
   resetImportV4Button?.addEventListener("click", resetProductImportV4);
+  runImageOcrButton?.addEventListener("click", runImageImportOcr);
+  setupImportModeTabs();
 }
 
 function handleManualImportImages() {
@@ -343,10 +368,16 @@ async function collectProductFrom1688() {
     });
 
     let payload = {};
+    const rawBody = await response.text();
     try {
-      payload = await response.json();
+      payload = rawBody ? JSON.parse(rawBody) : {};
     } catch {
-      payload = {};
+      payload = { error: rawBody };
+    }
+
+    const verificationMessage = get1688VerificationMessage(payload);
+    if (verificationMessage) {
+      throw new Error(verificationMessage);
     }
 
     if (!response.ok) {
@@ -372,6 +403,95 @@ async function collectProductFrom1688() {
     showToast(message, "error");
   } finally {
     setButtonBusy(collectFrom1688Button, false);
+  }
+}
+
+function get1688VerificationMessage(payload) {
+  const values = [];
+  const collect = (value) => {
+    if (value === undefined || value === null) return;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      values.push(String(value));
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach(collect);
+      return;
+    }
+    if (typeof value === "object") Object.values(value).forEach(collect);
+  };
+
+  collect(payload);
+  const text = values.join(" ").toLowerCase();
+  if (/captcha|anti-bot|verification|verify|risk control|风控|验证码|验证/.test(text)) {
+    return "1688 verification required. Please open the product page manually and complete verification first.";
+  }
+
+  return "";
+}
+
+function setupImportModeTabs() {
+  const buttons = Array.from(document.querySelectorAll("[data-import-mode]"));
+  const sections = Array.from(document.querySelectorAll("[data-import-section]"));
+  if (!buttons.length || !sections.length) return;
+
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const mode = button.dataset.importMode;
+      buttons.forEach((item) => item.classList.toggle("is-active", item === button));
+      sections.forEach((section) => {
+        section.classList.toggle("is-muted-mode", section.dataset.importSection !== mode && mode !== "manual");
+      });
+      const target = sections.find((section) => section.dataset.importSection === mode);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+async function runImageImportOcr() {
+  const fields = productImportV4Form?.elements;
+  if (!fields) return;
+  const files = [
+    ...Array.from(productImportImagesInput?.files || []),
+    ...Array.from(productImportAppendImagesInput?.files || []),
+    ...Array.from(productImportDetailImagesInput?.files || [])
+  ].filter((file) => file && file.type?.startsWith("image/"));
+
+  if (!files.length && !mainImportImages.length && !detailImportImages.length) {
+    setProductImportStatus("Upload product or detail images before running OCR.", "", "error");
+    return;
+  }
+
+  if (!("TextDetector" in window)) {
+    const filenameText = files.map((file) => file.name.replace(/\.[a-z0-9]+$/i, "")).filter(Boolean).join(", ");
+    if (filenameText && !fields.seo_keywords.value.trim()) fields.seo_keywords.value = filenameText;
+    setProductImportStatus("Browser OCR is unavailable. Images are still ready for manual product creation.", "", "error");
+    return;
+  }
+
+  try {
+    setButtonBusy(runImageOcrButton, true);
+    setProductImportStatus("Running browser OCR on uploaded images...");
+    const detector = new window.TextDetector();
+    const recognized = [];
+    for (const file of files) {
+      const bitmap = await createImageBitmap(file);
+      const results = await detector.detect(bitmap);
+      bitmap.close?.();
+      recognized.push(...results.map((item) => item.rawValue).filter(Boolean));
+    }
+    const text = recognized.join(" ").trim();
+    if (text) {
+      if (!fields.description.value.trim()) fields.description.value = text;
+      if (!fields.seo_keywords.value.trim()) fields.seo_keywords.value = text.split(/\s+/).slice(0, 16).join(", ");
+      setProductImportStatus("OCR complete. Review the extracted text before publishing.");
+    } else {
+      setProductImportStatus("OCR finished but no readable text was found. You can still create the product manually.");
+    }
+  } catch (error) {
+    setProductImportStatus(error.message || "OCR failed. You can still create the product manually.", "", "error");
+  } finally {
+    setButtonBusy(runImageOcrButton, false);
   }
 }
 
@@ -874,7 +994,9 @@ async function loadProducts() {
 
     if (error) throw error;
     productsCache = data || [];
-    renderProducts(productsCache);
+    window.__linfAdminProducts = productsCache;
+    selectedProductIds = new Set([...selectedProductIds].filter((id) => productsCache.some((product) => String(product.id) === id)));
+    renderProducts();
     renderDashboard();
   } catch (error) {
     productList.innerHTML = renderEmptyState(error.message || "Failed to load products.");
@@ -882,43 +1004,204 @@ async function loadProducts() {
   }
 }
 
-function renderProducts(products) {
+function renderProducts(products = productsCache) {
+  const filteredProducts = getFilteredProducts(products);
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage));
+  productCurrentPage = Math.min(Math.max(productCurrentPage, 1), totalPages);
+  const startIndex = (productCurrentPage - 1) * productsPerPage;
+  const pageProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage);
+
+  renderProductListSummary(filteredProducts.length, products.length, totalPages);
+  renderProductPagination(totalPages);
+  updateBulkDeleteButton();
+
   if (!products.length) {
     productList.innerHTML = renderEmptyState("No products yet", "Add your first product to start building the storefront catalog.");
     return;
   }
 
-  productList.innerHTML = products.map((product) => `
-    <article class="admin-product">
-      ${renderMediaThumb(product.image_url, product.name || "Product", "product")}
-      <div class="admin-product-info">
-        <h3>${escapeHtml(product.name || "Untitled Product")}</h3>
-        <div class="admin-product-meta">
-          <span class="status-pill ${escapeAttribute(normalizeStatusClass(product.status))}">${escapeHtml(product.status || "published")}</span>
-          <span class="meta-chip">${escapeHtml(product.category || "Uncategorized")}</span>
-          <span class="meta-chip">Price: ${escapeHtml(product.price || "-")}</span>
-          <span class="meta-chip">MOQ: ${escapeHtml(product.moq || "-")}</span>
-          <span class="meta-chip">Sort: ${escapeHtml(product.sort_order ?? 0)}</span>
-          ${isProductFeatured(product) ? '<span class="meta-chip">Featured</span>' : ""}
-        </div>
-        <p>${escapeHtml(product.short_desc || product.description || "No product summary yet.")}</p>
-      </div>
-      <div class="admin-product-actions">
-        <button type="button" data-action="edit" data-id="${escapeAttribute(product.id)}">Edit</button>
-        <button type="button" data-action="delete" data-id="${escapeAttribute(product.id)}">Delete</button>
-      </div>
-    </article>
-  `).join("");
+  if (!pageProducts.length) {
+    productList.innerHTML = renderEmptyState("No matching products", "Try another search term or category filter.");
+    return;
+  }
 
-  productList.querySelectorAll("button").forEach((button) => {
+  productList.innerHTML = pageProducts.map((product) => createProductRow(product)).join("");
+
+  ensureProductActionButtons(pageProducts);
+  const renderedActionCount = productList.querySelectorAll(".product-actions").length;
+  console.log("Products buttons rendered:", renderedActionCount);
+  console.log("DOM product-actions exists:", renderedActionCount > 0);
+
+  productList.querySelectorAll(".edit-product-btn").forEach((button) => {
     button.addEventListener("click", () => {
       const product = products.find((item) => String(item.id) === String(button.dataset.id));
-      if (button.dataset.action === "edit") editProduct(product);
-      if (button.dataset.action === "delete") deleteProduct(product);
+      editProduct(product);
+    });
+  });
+
+  productList.querySelectorAll(".delete-product-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const product = products.find((item) => String(item.id) === String(button.dataset.id));
+      deleteProduct(product);
+    });
+  });
+
+  productList.querySelectorAll('input[data-action="select-product"]').forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        selectedProductIds.add(String(checkbox.value));
+      } else {
+        selectedProductIds.delete(String(checkbox.value));
+      }
+      updateBulkDeleteButton();
     });
   });
 }
 
+function ensureProductActionButtons(products) {
+  const rows = Array.from(productList.querySelectorAll(".product-row, .admin-product"));
+  rows.forEach((row, index) => {
+    row.classList.add("product-row");
+    if (row.querySelector(".product-actions")) return;
+    const product = products[index];
+    if (!product) return;
+    const productId = String(product.id || "");
+    const detailUrl = productId ? `product-detail.html?id=${encodeURIComponent(productId)}` : "product.html";
+    row.insertAdjacentHTML("beforeend", `
+      <div class="product-actions">
+        <button type="button" class="edit-product-btn" data-id="${escapeAttribute(productId)}">Edit</button>
+        <button type="button" class="delete-product-btn" data-id="${escapeAttribute(productId)}">Delete</button>
+        <a class="view-product-btn" href="${escapeAttribute(detailUrl)}" target="_blank" rel="noopener">View</a>
+      </div>
+    `);
+  });
+}
+function createProductRow(product) {
+  const productId = String(product.id || "");
+  const detailUrl = productId ? `product-detail.html?id=${encodeURIComponent(productId)}` : "product.html";
+  const keywords = product.keywords || product.seo_keywords || "";
+
+  return `
+    <article class="admin-product product-row">
+      <label class="product-select">
+        <input type="checkbox" data-action="select-product" value="${escapeAttribute(productId)}" ${selectedProductIds.has(productId) ? "checked" : ""}>
+        <span>Select</span>
+      </label>
+      ${renderMediaThumb(product.image_url, product.name || product.title || "Product", "product")}
+      <div class="product-info admin-product-info">
+        <h3>${escapeHtml(product.name || product.title || "Untitled Product")}</h3>
+        <div class="admin-product-meta">
+          <span class="status-pill ${escapeAttribute(normalizeStatusClass(product.status))}">${escapeHtml(product.status || "published")}</span>
+          <span class="meta-chip">${escapeHtml(product.category || "Uncategorized")}</span>
+          <span class="meta-chip">Created: ${escapeHtml(formatDate(product.created_at))}</span>
+          <span class="meta-chip">Sort: ${escapeHtml(product.sort_order ?? 0)}</span>
+          ${isProductFeatured(product) ? '<span class="meta-chip">Featured</span>' : ""}
+        </div>
+        <p>${escapeHtml(product.short_desc || product.description || keywords || "No product summary yet.")}</p>
+      </div>
+      <div class="product-actions">
+        <button type="button" class="edit-product-btn" data-id="${escapeAttribute(productId)}">Edit</button>
+        <button type="button" class="delete-product-btn" data-id="${escapeAttribute(productId)}">Delete</button>
+        <a class="view-product-btn" href="${escapeAttribute(detailUrl)}" target="_blank" rel="noopener">View</a>
+      </div>
+    </article>
+  `;
+}
+
+function getFilteredProducts(products) {
+  const query = clean(productSearchInput?.value || "").toLowerCase();
+  const category = clean(productCategoryFilter?.value || "all");
+
+  return products.filter((product) => {
+    const categoryValue = product.category || "";
+    const matchesCategory = category === "all" || categoryValue === category;
+    const haystack = [
+      product.name,
+      product.title,
+      product.category,
+      product.keywords,
+      product.seo_keywords,
+      product.short_desc,
+      product.description
+    ].filter(Boolean).join(" ").toLowerCase();
+    return matchesCategory && (!query || haystack.includes(query));
+  });
+}
+
+function renderProductListSummary(filteredCount, totalCount, totalPages) {
+  if (!productListSummary) return;
+  const pageLabel = totalPages > 1 ? ` Page ${productCurrentPage} of ${totalPages}.` : "";
+  productListSummary.textContent = `${filteredCount} of ${totalCount} products.${pageLabel}`;
+}
+
+function renderProductPagination(totalPages) {
+  if (!productPagination) return;
+  if (totalPages <= 1) {
+    productPagination.innerHTML = "";
+    return;
+  }
+
+  productPagination.innerHTML = `
+    <button type="button" data-page="prev" ${productCurrentPage === 1 ? "disabled" : ""}>Prev</button>
+    <span>Page ${productCurrentPage} / ${totalPages}</span>
+    <button type="button" data-page="next" ${productCurrentPage === totalPages ? "disabled" : ""}>Next</button>
+  `;
+
+  productPagination.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      productCurrentPage += button.dataset.page === "next" ? 1 : -1;
+      renderProducts();
+    });
+  });
+}
+
+function updateBulkDeleteButton() {
+  if (!deleteSelectedProductsButton) return;
+  const count = selectedProductIds.size;
+  deleteSelectedProductsButton.disabled = count === 0;
+  deleteSelectedProductsButton.textContent = count ? `Delete Selected (${count})` : "Delete Selected";
+}
+
+async function deleteSelectedProducts() {
+  await ensureAdminSession();
+  const selectedProducts = productsCache.filter((product) => selectedProductIds.has(String(product.id)));
+  if (!selectedProducts.length) return;
+  const confirmed = window.confirm(`Delete ${selectedProducts.length} selected product${selectedProducts.length === 1 ? "" : "s"}?`);
+  if (!confirmed) return;
+
+  setButtonBusy(deleteSelectedProductsButton, true);
+  setStatus("Deleting selected products...");
+  try {
+    const config = getAdminConfig();
+    for (const product of selectedProducts) {
+      await deleteProductStorageFiles(product);
+    }
+    const { error } = await client.from(config.productsTable).delete().in("id", selectedProducts.map((product) => product.id));
+    if (error) throw error;
+    selectedProductIds.clear();
+    setStatus("Selected products deleted.");
+    showToast("Selected products deleted.");
+    await loadProducts();
+  } catch (error) {
+    const message = error.message || "Failed to delete selected products.";
+    setStatus(message);
+    showToast(message, "error");
+  } finally {
+    setButtonBusy(deleteSelectedProductsButton, false);
+    updateBulkDeleteButton();
+  }
+}
+
+window.LINF_ADMIN_ACTIONS = {
+  editProductById(id) {
+    const product = productsCache.find((item) => String(item.id) === String(id));
+    editProduct(product);
+  },
+  deleteProductById(id) {
+    const product = productsCache.find((item) => String(item.id) === String(id));
+    deleteProduct(product);
+  }
+};
 function editProduct(product) {
   if (!product) return;
 
@@ -1126,7 +1409,7 @@ function renderCategories(categories) {
   categoryList.innerHTML = categories.map((category) => `
     <article class="admin-product">
       ${renderMediaThumb(category.image_url, category.name || "Category", "category")}
-      <div class="admin-product-info">
+      <div class="product-info admin-product-info">
         <h3>${escapeHtml(category.name || "Untitled Category")}</h3>
         <div class="admin-product-meta">
           <span class="status-pill ${escapeAttribute(normalizeStatusClass(category.status))}">${escapeHtml(category.status || "hidden")}</span>
@@ -1260,7 +1543,7 @@ function renderFactoryVideos(videos) {
   factoryVideoList.innerHTML = videos.map((video) => `
     <article class="admin-product">
       <video class="admin-video-preview" src="${escapeAttribute(video.video_url || "")}" muted playsinline></video>
-      <div class="admin-product-info">
+      <div class="product-info admin-product-info">
         <h3>${escapeHtml(video.title || "Untitled Video")}</h3>
         <div class="admin-product-meta">
           <span class="status-pill ${escapeAttribute(normalizeStatusClass(video.status))}">${escapeHtml(video.status || "draft")}</span>
@@ -1354,12 +1637,14 @@ function renderInquiries(inquiries) {
 
   inquiryList.innerHTML = inquiries.map((inquiry) => {
     const whatsappUrl = buildWhatsAppLink(inquiry.whatsapp);
+    const rfqProducts = normalizeRfqProducts(inquiry.products);
+    const buyerName = inquiry.buyer_name || inquiry.name || "Unnamed Customer";
     return `
       <article class="admin-inquiry" data-inquiry-id="${escapeAttribute(inquiry.id)}">
         <div>
           <div class="inquiry-head">
             <div>
-              <h3>${escapeHtml(inquiry.name || "Unnamed Customer")}</h3>
+              <h3>${escapeHtml(buyerName)}</h3>
               <p>${escapeHtml(inquiry.email || "No email provided")}</p>
             </div>
             <select class="inquiry-status-select ${escapeAttribute(normalizeInquiryStatus(inquiry.status))}" data-action="status" data-id="${escapeAttribute(inquiry.id)}">
@@ -1371,20 +1656,26 @@ function renderInquiries(inquiries) {
             <p><strong>Company:</strong> ${escapeHtml(inquiry.company || "-")}</p>
             <p><strong>Country:</strong> ${escapeHtml(inquiry.country || "-")}</p>
             <p><strong>WhatsApp:</strong> ${escapeHtml(inquiry.whatsapp || "-")}</p>
-            <p><strong>Interested Product:</strong> ${escapeHtml(inquiry.product || "-")}</p>
-            <p><strong>Quantity:</strong> ${escapeHtml(inquiry.quantity || "-")}</p>
+            <p><strong>Products:</strong> ${escapeHtml(rfqProducts.length ? `${rfqProducts.length} RFQ item${rfqProducts.length === 1 ? "" : "s"}` : inquiry.product || "-")}</p>
+            <p><strong>Expected Quantity:</strong> ${escapeHtml(inquiry.expected_quantity || inquiry.quantity || "-")}</p>
+            <p><strong>Website:</strong> ${escapeHtml(inquiry.website || "-")}</p>
+            <p><strong>Target Market:</strong> ${escapeHtml(inquiry.target_market || "-")}</p>
             <p><strong>Submitted:</strong> ${escapeHtml(formatDate(inquiry.created_at))}</p>
           </div>
           <div class="inquiry-detail" hidden>
             <div class="inquiry-detail-grid">
               <div class="detail-block">
                 <strong>Customer Info</strong>
-                <p>${escapeHtml(inquiry.name || "-")}<br>${escapeHtml(inquiry.company || "-")}<br>${escapeHtml(inquiry.country || "-")}<br>${escapeHtml(inquiry.email || "-")}<br>${escapeHtml(inquiry.whatsapp || "-")}</p>
+                <p>${escapeHtml(buyerName)}<br>${escapeHtml(inquiry.company || "-")}<br>${escapeHtml(inquiry.country || "-")}<br>${escapeHtml(inquiry.email || "-")}<br>${escapeHtml(inquiry.whatsapp || "-")}<br>${escapeHtml(inquiry.website || "-")}<br>${escapeHtml(inquiry.target_market || "-")}</p>
               </div>
               <div class="detail-block">
-                <strong>Interested Product</strong>
-                <p>${escapeHtml(inquiry.product || "-")}<br>${escapeHtml(inquiry.quantity || "-")}<br>${escapeHtml(formatDate(inquiry.created_at))}</p>
+                <strong>Purchase Requirements</strong>
+                <p>Expected Quantity: ${escapeHtml(inquiry.expected_quantity || inquiry.quantity || "-")}<br>OEM Logo: ${escapeHtml(inquiry.oem_logo_required || "-")}<br>Custom Packaging: ${escapeHtml(inquiry.custom_packaging_required || "-")}<br>Sample Order: ${escapeHtml(inquiry.sample_order_needed || "-")}<br>Destination: ${escapeHtml(inquiry.delivery_destination || "-")}<br>${escapeHtml(formatDate(inquiry.created_at))}</p>
               </div>
+            </div>
+            <div class="detail-block">
+              <strong>RFQ Product List</strong>
+              ${renderRfqProducts(rfqProducts)}
             </div>
             <div class="detail-block">
               <strong>Inquiry Message</strong>
@@ -1421,9 +1712,36 @@ function renderInquiries(inquiries) {
   });
 }
 
+function normalizeRfqProducts(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function renderRfqProducts(products) {
+  if (!products.length) return `<p>No RFQ products saved.</p>`;
+  return `
+    <div class="admin-rfq-products">
+      ${products.map((product) => `
+        <article class="admin-rfq-product">
+          ${product.product_image ? `<img src="${escapeAttribute(product.product_image)}" alt="${escapeAttribute(product.product_name || "RFQ product")}">` : `<div class="compact-thumb">RFQ</div>`}
+          <div>
+            <strong>${escapeHtml(product.product_name || "RFQ Product")}</strong>
+            <p>${escapeHtml(product.category || "-")}<br>Quantity: ${escapeHtml(product.quantity || 1)}<br>Notes: ${escapeHtml(product.notes || "-")}</p>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
 function renderStatusOptions(status) {
   const current = normalizeInquiryStatus(status);
-  const statuses = ["new", "replied", "quoted", "closed"];
+  const statuses = ["new", "contacted", "quoted", "closed"];
   return statuses.map((item) => `
     <option value="${item}" ${item === current ? "selected" : ""}>${capitalize(item)}</option>
   `).join("");
@@ -1431,7 +1749,7 @@ function renderStatusOptions(status) {
 
 function normalizeInquiryStatus(status) {
   const value = String(status || "new").toLowerCase();
-  return ["new", "replied", "quoted", "closed"].includes(value) ? value : "new";
+  return ["new", "contacted", "quoted", "closed", "replied"].includes(value) ? (value === "replied" ? "contacted" : value) : "new";
 }
 
 function capitalize(value) {
@@ -1517,7 +1835,7 @@ function renderDashboard() {
       <article class="compact-item">
         <div class="compact-thumb">${escapeHtml(getInitials(inquiry.name || inquiry.email || "Lead"))}</div>
         <div>
-          <h3>${escapeHtml(inquiry.name || "Unnamed Customer")}</h3>
+          <h3>${escapeHtml(buyerName)}</h3>
           <p>${escapeHtml(inquiry.product || inquiry.email || "No product specified")}</p>
         </div>
         <span class="status-pill ${escapeAttribute(normalizeInquiryStatus(inquiry.status))}">${escapeHtml(normalizeInquiryStatus(inquiry.status))}</span>
@@ -1693,5 +2011,14 @@ window.XIQI_ADMIN_READY
     console.warn(error.message || "Admin authentication failed.");
   });
 });
+
+
+
+
+
+
+
+
+
 
 

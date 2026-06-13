@@ -39,6 +39,13 @@
       message: fieldValue(form, "message")
     };
 
+    const validationMessage = validateInquiry(data);
+    if (validationMessage) {
+      setStatus(status, validationMessage, "error");
+      setLoading(button, false);
+      return;
+    }
+
     try {
       await saveInquiry(client, data);
 
@@ -71,10 +78,16 @@
   });
 });
 
+function validateInquiry(data) {
+  if (!data.name) return "Please enter your name.";
+  if (!data.country) return "Please enter your country.";
+  if (!data.email && !data.whatsapp) return "Please enter either Email or WhatsApp.";
+  return "";
+}
 function setLoading(button, isLoading) {
   button.disabled = isLoading;
   button.classList.toggle("is-loading", isLoading);
-  button.textContent = isLoading ? "Sending..." : "Send Inquiry";
+  button.textContent = isLoading ? "Sending..." : "Get Best Quote";
 }
 
 function setStatus(status, message, type) {
@@ -147,3 +160,4 @@ async function sendInquiryEmail(data) {
 function getXiqiSupabaseClient(config) {
   return window.supabaseClient;
 }
+

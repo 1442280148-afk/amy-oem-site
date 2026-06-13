@@ -15,7 +15,7 @@ if (window.supabase?.createClient) {
   );
 } else {
   window.supabaseClient = null;
-  console.error("Supabase SDK failed to load before supabase-config.js.");
+  console.warn("Supabase SDK failed to load before supabase-config.js.");
 }
 
 window.XIQI_CONFIG = {
@@ -27,4 +27,5 @@ window.XIQI_CONFIG = {
 };
 
 window.XIQI_SUPABASE = window.XIQI_CONFIG;
+
 

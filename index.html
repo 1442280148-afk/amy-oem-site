@@ -38,6 +38,7 @@
       <a href="#featured">Featured</a>
       <a href="#oem">OEM / Wholesale</a>
       <a href="#contact">Contact</a>
+      <a class="rfq-nav-link" href="rfq.html">RFQ Center (<span data-rfq-count>0</span>)</a>
     </nav>
 
     <button class="menu-btn" type="button" onclick="toggleMenu()" aria-label="Toggle navigation">?</button>
@@ -389,16 +390,38 @@
         <h2>Ready to Source Mobile Accessories?</h2>
         <p class="contact-intro">Send product details, target category, branding needs or quantity range. We will respond with practical sourcing support.</p>
 
-        <form id="inquiryForm" class="inquiry-form">
-          <input type="text" name="name" placeholder="Your Name" required>
-          <input type="text" name="company" placeholder="Company">
-          <input type="text" name="country" placeholder="Country">
-          <input type="email" name="email" placeholder="Email Address" required>
-          <input type="text" name="whatsapp" placeholder="WhatsApp Number">
-          <input type="text" name="product" placeholder="Product Interested">
-          <input type="text" name="quantity" placeholder="Quantity">
-          <textarea name="message" placeholder="Tell us what products you need" required></textarea>
-          <button type="submit">Send Inquiry</button>
+        <form id="inquiryForm" class="inquiry-form compact-inquiry-form">
+          <input type="text" name="name" placeholder="Name" required>
+          <input type="text" name="whatsapp" placeholder="WhatsApp">
+          <input type="email" name="email" placeholder="Email">
+          <input type="text" name="country" placeholder="Country" required>
+          <select name="product" aria-label="Interested Category">
+            <option value="">Interested Category</option>
+            <option value="Phone Cases">Phone Cases</option>
+            <option value="Screen Protectors">Screen Protectors</option>
+            <option value="Lens Protectors">Lens Protectors</option>
+            <option value="Charging Accessories">Charging Accessories</option>
+            <option value="Data Cables">Data Cables</option>
+            <option value="Power Banks">Power Banks</option>
+            <option value="Hydrogel Film Machines">Hydrogel Film Machines</option>
+            <option value="Other">Other</option>
+          </select>
+          <select name="quantity" aria-label="Expected Quantity">
+            <option value="">Expected Quantity</option>
+            <option value="Sample Order">Sample Order</option>
+            <option value="50-100 pcs">50-100 pcs</option>
+            <option value="100-500 pcs">100-500 pcs</option>
+            <option value="500-1000 pcs">500-1000 pcs</option>
+            <option value="1000+ pcs">1000+ pcs</option>
+          </select>
+          <textarea name="message" placeholder="Example: Need MagSafe phone cases, 500 pcs, OEM logo required, shipping to France."></textarea>
+          <div class="inquiry-trust-row" aria-label="Inquiry service promises">
+            <span>✓ Reply within 12 Hours</span>
+            <span>✓ OEM & ODM Supported</span>
+            <span>✓ Flexible MOQ</span>
+            <span>✓ Worldwide Shipping</span>
+          </div>
+          <button type="submit">Get Best Quote</button>
         </form>
       </div>
 
@@ -467,9 +490,13 @@
   <script src="performance.js"></script>
   <script src="script.js"></script>
   <script src="i18n.js"></script>
+  <script src="rfq.js"></script>
 </body>
 
 </html>
+
+
+
 
 
 

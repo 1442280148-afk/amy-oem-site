@@ -157,6 +157,7 @@ function renderFilteredProducts() {
         <h3>${escapeHtml(product.title || product.name || "LinfTech Product")}</h3>
         <div class="product-card-actions">
           <a class="product-details-button" href="product-detail.html?id=${encodeURIComponent(product.id)}">View Details</a>
+          <button type="button" class="add-to-rfq-btn" data-product-id="${escapeAttribute(product.id)}" data-product-name="${escapeAttribute(product.title || product.name || "LinfTech Product")}" data-product-image="${escapeAttribute(getProductCardImage(product))}" data-category="${escapeAttribute(product.category || "Wholesale Accessories")}">Add to RFQ</button>
           <a class="product-inquiry-button" href="${escapeAttribute(buildWhatsappLink(product.title || product.name || "LinfTech Product"))}" target="_blank" rel="noopener">Quick Inquiry</a>
         </div>
       </div>
@@ -318,6 +319,14 @@ function renderProductDetail(product) {
     inquiryButton.href = `index.html?product=${encodeURIComponent(displayName)}#contact`;
   }
 
+  const addRfqButton = document.querySelector(".detail-add-rfq");
+  if (addRfqButton) {
+    addRfqButton.dataset.productId = product.id || displayName;
+    addRfqButton.dataset.productName = displayName;
+    addRfqButton.dataset.productImage = images[0] || product.image_url || "logo.png";
+    addRfqButton.dataset.category = product.category || "Wholesale Accessories";
+  }
+
   if (whatsappButton) {
     whatsappButton.href = buildWhatsappLink(displayName);
     whatsappButton.target = "_blank";
@@ -453,4 +462,5 @@ function escapeHtml(value) {
 function escapeAttribute(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
+
 

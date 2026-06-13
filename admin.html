@@ -91,6 +91,37 @@
         <button id="refreshProducts" class="soft-button" type="button">Refresh</button>
       </div>
 
+      <section class="admin-panel product-tools-panel">
+        <div class="product-tools">
+          <label class="product-search-field">
+            Search Products
+            <input type="search" id="productSearchInput" placeholder="Search title, category, keywords">
+          </label>
+          <label class="product-filter-field">
+            Category Filter
+            <select id="productCategoryFilter">
+              <option value="all">All</option>
+              <option value="Phone Cases">Phone Cases</option>
+              <option value="Screen Protectors">Screen Protectors</option>
+              <option value="Lens Protectors">Lens Protectors</option>
+              <option value="Chargers">Chargers</option>
+              <option value="Cables">Cables</option>
+              <option value="Charging Accessories">Charging Accessories</option>
+              <option value="Data Cables">Data Cables</option>
+              <option value="Power Banks">Power Banks</option>
+              <option value="Car Accessories">Car Accessories</option>
+              <option value="Tablet Accessories">Tablet Accessories</option>
+              <option value="OEM Solutions">OEM Solutions</option>
+            </select>
+          </label>
+          <button id="deleteSelectedProducts" class="danger-soft" type="button" disabled>Delete Selected</button>
+        </div>
+        <div class="product-list-summary">
+          <span id="productListSummary">0 products</span>
+          <div id="productPagination" class="product-pagination"></div>
+        </div>
+      </section>
+
       <section class="admin-panel editor-panel">
         <form id="productForm" class="product-form">
           <input type="hidden" name="id">
@@ -111,7 +142,7 @@
               </label>
               <label>
                 Category
-                <input type="text" name="category" placeholder="Phone Cases">
+                <input type="text" name="category" list="tradeCategoryOptions" placeholder="Phone Cases">
               </label>
               <label>
                 Sort Order
@@ -255,9 +286,15 @@
 
       <section class="admin-panel editor-panel">
         <form id="productImportV4Form" class="product-form">
-          <div class="form-section">
+          <div class="import-mode-tabs" role="tablist" aria-label="Product import modes">
+            <button class="import-mode-button is-active" type="button" data-import-mode="1688">Mode A · 1688 Link Import</button>
+            <button class="import-mode-button" type="button" data-import-mode="image">Mode B · Image Import</button>
+            <button class="import-mode-button" type="button" data-import-mode="manual">Mode C · Manual Product Builder</button>
+          </div>
+
+          <div class="form-section" data-import-section="1688">
             <div class="form-section-heading">
-              <p>Collect From 1688</p>
+              <p>Mode A · 1688 Link Import</p>
               <span>Calls the local LINF Collector API on this computer. The website server never crawls 1688.</span>
             </div>
             <div class="collector-row">
@@ -270,10 +307,10 @@
             <div id="collectorStatus" class="status-callout">Please start LINF Collector API on your computer first.</div>
           </div>
 
-          <div class="form-section">
+          <div class="form-section" data-import-section="image">
             <div class="form-section-heading">
-              <p>Manual Fallback Import</p>
-              <span>Keep using product.json and local images when the collector service is unavailable.</span>
+              <p>Mode B · Image Import</p>
+              <span>Upload main and detail images. Browser OCR is attempted when available; you can still publish manually.</span>
             </div>
             <div class="form-grid media-grid">
               <label>
@@ -285,12 +322,16 @@
                 <input type="file" id="productImportImages" accept="image/*" multiple>
               </label>
             </div>
+            <div class="import-upload-row">
+              <button id="runImageOcr" class="soft-button" type="button">Run Image OCR</button>
+              <span>OCR reads visible text from uploaded images when the browser supports TextDetector.</span>
+            </div>
             <div id="productImportJsonStatus" class="status-callout">No JSON loaded yet.</div>
           </div>
 
-          <div class="form-section">
+          <div class="form-section" data-import-section="manual">
             <div class="form-section-heading">
-              <p>Product Form</p>
+              <p>Mode C · Manual Product Builder</p>
               <span>Fields are prefilled from collection results or JSON and can be edited before saving.</span>
             </div>
             <label>
@@ -304,7 +345,7 @@
               </label>
               <label>
                 Category
-                <input type="text" name="category" placeholder="Phone Cases">
+                <input type="text" name="category" list="tradeCategoryOptions" placeholder="Phone Cases">
               </label>
               <label>
                 SEO Keywords
@@ -527,14 +568,38 @@
     </section>
   </main>
 
+  <datalist id="tradeCategoryOptions">
+    <option value="Phone Cases"></option>
+    <option value="Screen Protectors"></option>
+    <option value="Lens Protectors"></option>
+    <option value="Charging Accessories"></option>
+    <option value="Wall Chargers"></option>
+    <option value="PD Fast Chargers"></option>
+    <option value="GaN Chargers"></option>
+    <option value="Wireless Chargers"></option>
+    <option value="MagSafe Chargers"></option>
+    <option value="Car Chargers"></option>
+    <option value="Data Cables"></option>
+    <option value="Power Banks"></option>
+    <option value="Car Accessories"></option>
+    <option value="Tablet Accessories"></option>
+    <option value="OEM Solutions"></option>
+  </datalist>
+
   <div id="adminToast" class="admin-toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="admin-auth.js"></script>
-  <script src="admin.js"></script>
+  <script src="admin.js?v=20260613-grid1"></script>
 </body>
 </html>
+
+
+
+
+
+
 
 
 

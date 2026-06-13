@@ -1,0 +1,122 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RFQ Center | LinfTech</title>
+  <meta name="description" content="Submit one RFQ for multiple LinfTech OEM mobile accessories products.">
+  <meta name="keywords" content="RFQ Center, wholesale mobile accessories quotation, OEM phone accessories RFQ">
+  <meta property="og:title" content="RFQ Center | LinfTech">
+  <meta property="og:description" content="Build your RFQ product list and submit one quotation request to LinfTech.">
+  <meta property="og:image" content="products-banner.jpg">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="header">
+    <div class="logo">
+      <img src="logo.png" alt="">
+      <div class="logo-text">LinfTech</div>
+    </div>
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="product.html">Products</a>
+      <a href="index.html#oem">OEM & ODM</a>
+      <a href="index.html#contact">Contact Us</a>
+      <a class="rfq-nav-link" href="rfq.html">RFQ Center (<span data-rfq-count>0</span>)</a>
+    </nav>
+  </header>
+
+  <main class="rfq-page">
+    <section class="rfq-hero">
+      <p>RFQ CENTER</p>
+      <h1>Request a quotation for multiple products.</h1>
+      <span>Review your selected products, add buyer details, then submit one complete RFQ to LinfTech.</span>
+    </section>
+
+    <form id="rfqForm" class="rfq-layout">
+      <section class="rfq-panel rfq-products-panel">
+        <div class="rfq-section-title">
+          <p>RFQ Product List</p>
+          <h2>Selected Products</h2>
+        </div>
+        <div id="rfqEmptyState" class="rfq-empty-state">
+          <h3>No products in RFQ Center yet.</h3>
+          <p>Go to Products and click Add to RFQ.</p>
+          <a href="product.html">Browse Products</a>
+        </div>
+        <div id="rfqProductList" class="rfq-product-list"></div>
+      </section>
+
+      <section class="rfq-panel">
+        <div class="rfq-section-title">
+          <p>Buyer Information</p>
+          <h2>Contact Details</h2>
+        </div>
+        <div class="rfq-form-grid">
+          <label>Name<input type="text" name="buyer_name" required placeholder="Your name"></label>
+          <label>Country<input type="text" name="country" required placeholder="Country"></label>
+          <label>Email<input type="email" name="email" placeholder="name@company.com"></label>
+          <label>WhatsApp<input type="text" name="whatsapp" placeholder="WhatsApp number"></label>
+        </div>
+      </section>
+
+      <section class="rfq-panel">
+        <div class="rfq-section-title">
+          <p>Purchase Requirements</p>
+          <h2>Project Details</h2>
+        </div>
+        <div class="rfq-form-grid">
+          <label>Expected Quantity<input type="text" name="expected_quantity" placeholder="500 pcs / mixed order"></label>
+          <label>OEM Logo Required
+            <select name="oem_logo_required">
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Not sure">Not sure</option>
+            </select>
+          </label>
+          <label>Custom Packaging Required
+            <select name="custom_packaging_required">
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Not sure">Not sure</option>
+            </select>
+          </label>
+          <label>Sample Order Needed
+            <select name="sample_order_needed">
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Later">Later</option>
+            </select>
+          </label>
+          <label>Delivery Destination<input type="text" name="delivery_destination" placeholder="City / country / port"></label>
+        </div>
+        <label class="rfq-message-field">Message<textarea name="message" rows="6" placeholder="Please tell us your quantity, logo requirements, packaging needs, target price, or delivery destination."></textarea></label>
+      </section>
+
+      <section class="rfq-submit-bar">
+        <button class="btn primary" type="submit">Submit RFQ</button>
+        <a id="sendRfqWhatsApp" class="btn secondary" href="https://wa.me/8619978036095" target="_blank" rel="noopener">Send via WhatsApp</a>
+        <span id="rfqSubmitStatus" class="rfq-status" role="status"></span>
+      </section>
+    </form>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-logo">LinfTech</div>
+    <p>Professional mobile accessories manufacturer in China.</p>
+    <div class="copyright">&copy; 2026 LinfTech. All Rights Reserved.</div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="rfq.js"></script>
+</body>
+</html>
+
+

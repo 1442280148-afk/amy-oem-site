@@ -25,7 +25,7 @@
 
     renderRelatedProducts(container, data || []);
   } catch (error) {
-    console.error("Failed to load related products.", error);
+    console.warn("Failed to load related products.", error);
     container.innerHTML = '<p class="related-products-message">Failed to load related products.</p>';
   }
 }
@@ -62,4 +62,5 @@ function escapeRelatedHtml(value) {
 function escapeRelatedAttribute(value) {
   return escapeRelatedHtml(value).replaceAll("`", "&#096;");
 }
+
 
