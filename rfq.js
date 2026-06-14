@@ -215,12 +215,15 @@
     try {
       if (!window.supabaseClient) throw new Error("Supabase client is not available.");
       await saveRfqInquiry(payload, items);
+      const emailSent = await sendRFQEmail(payload);
       localStorage.removeItem(RFQ_KEY);
       form.reset();
       renderRfqPage();
       updateRfqCount();
-      setStatus(status, "RFQ submitted successfully. We will contact you soon.");
-      showRfqToast("RFQ submitted successfully.");
+      setStatus(status, emailSent
+        ? "RFQ submitted successfully. Email notification sent."
+        : "RFQ submitted successfully, but email notification was not confirmed. Please check Vercel logs / SMTP settings.", !emailSent);
+      showRfqToast(emailSent ? "RFQ submitted successfully." : "RFQ saved, email not confirmed.");
     } catch (error) {
       setStatus(status, `${error.message || "Failed to submit RFQ."} If this mentions missing columns, run the RFQ SQL migration.`, true);
     }
@@ -228,6 +231,41 @@
 
 
 
+  async function sendRFQEmail(inquiryData) {
+    console.log("RFQ EMAIL TRIGGERED", inquiryData);
+
+    try {
+      const response = await fetch("/api/send-inquiry", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...inquiryData,
+          inquiry_type: "rfq",
+          submitted_at: new Date().toLocaleString()
+        })
+      });
+
+      let result = {};
+      try {
+        result = await response.json();
+      } catch {
+        result = {};
+      }
+
+      if (!response.ok) {
+        console.warn("RFQ email API failed:", result.error || response.status, result);
+        return false;
+      }
+
+      console.log("RFQ email API success:", result);
+      return true;
+    } catch (error) {
+      console.warn("RFQ email request failed:", error);
+      return false;
+    }
+  }
   async function saveRfqInquiry(payload, items) {
     const fullInsert = await window.supabaseClient.from("inquiries").insert([payload]);
     if (!fullInsert.error) return;
@@ -440,6 +478,8 @@
 
   window.addEventListener("storage", updateRfqCount);
 })();
+
+
 
 
 
